@@ -16,6 +16,7 @@ export interface Market {
     no_token_id: string;
   };
   price_history?: number[];
+  source?: "polymarket" | "liquid";
 }
 
 export interface MarketAnalysis {

@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "@/stores/app-store";
 import { CATEGORY_CONFIG } from "@/lib/categories";
+import { isCryptoMarket } from "@/lib/liquid";
 import AIRecommendation from "./AIRecommendation";
 
 type Segment = "all" | "buys" | "watchlist";
@@ -39,13 +40,23 @@ export default function Dashboard() {
     // P&L for buys
     const totalRisked = buys.reduce((acc, s) => acc + s.bet_amount, 0);
     const unrealizedPnl = buys.reduce((acc, s) => {
-      const currentYes = s.market.yes_price; // In real app, would fetch live
+      if (isCryptoMarket(s.market)) {
+        // Crypto P&L: price change since swipe
+        const priceAtSwipe = s.market.current_price;
+        const pnl = ((s.market.current_price - priceAtSwipe) / priceAtSwipe) * s.bet_amount;
+        return acc + pnl;
+      }
+      const currentYes = s.market.yes_price;
       const pnl =
         ((currentYes - s.price_at_swipe.yes) / s.price_at_swipe.yes) * s.bet_amount;
       return acc + pnl;
     }, 0);
 
-    return { buys, skips, watchlist, avgConfidence, topCat, totalRisked, unrealizedPnl };
+    // Breakdown counts
+    const cryptoCount = swipeHistory.filter((s) => isCryptoMarket(s.market)).length;
+    const predictionCount = swipeHistory.length - cryptoCount;
+
+    return { buys, skips, watchlist, avgConfidence, topCat, totalRisked, unrealizedPnl, cryptoCount, predictionCount };
   }, [swipeHistory]);
 
   const filtered = useMemo(() => {
@@ -93,6 +104,12 @@ export default function Dashboard() {
             {total}
           </motion.span>
           <p className="text-xs text-[#9CA3AF] mt-1">Markets reviewed</p>
+          {/* Breakdown */}
+          {stats.cryptoCount > 0 && stats.predictionCount > 0 && (
+            <p className="text-[10px] text-[#6B7280] mt-0.5">
+              {stats.predictionCount} Prediction Markets &bull; {stats.cryptoCount} Crypto
+            </p>
+          )}
         </div>
 
         {/* Stat pills */}
@@ -202,9 +219,11 @@ export default function Dashboard() {
         {filtered.map((record, i) => {
           const isExpanded = expandedId === record.id;
           const catConfig = CATEGORY_CONFIG[record.market.category];
+          const isCrypto = isCryptoMarket(record.market);
+
           const actionColor =
             record.action === "buy"
-              ? "bg-emerald-500"
+              ? isCrypto ? "bg-amber-500" : "bg-emerald-500"
               : record.action === "watchlist"
               ? "bg-blue-500"
               : "bg-red-500";
@@ -216,7 +235,9 @@ export default function Dashboard() {
               : "Skipped ✗";
           const actionTextColor =
             record.action === "buy"
-              ? "text-emerald-400 bg-emerald-500/15"
+              ? isCrypto
+                ? "text-amber-400 bg-amber-500/15"
+                : "text-emerald-400 bg-emerald-500/15"
               : record.action === "watchlist"
               ? "text-blue-400 bg-blue-500/15"
               : "text-[#9CA3AF] bg-white/5";
@@ -241,10 +262,17 @@ export default function Dashboard() {
                         {record.market.question}
                       </p>
                       <div className="flex items-center gap-2 mt-1.5">
-                        <span className="text-[10px] text-[#9CA3AF]">
-                          YES {Math.round(record.price_at_swipe.yes * 100)}% / NO{" "}
-                          {Math.round(record.price_at_swipe.no * 100)}%
-                        </span>
+                        {isCrypto && isCryptoMarket(record.market) ? (
+                          <span className="text-[10px] text-[#9CA3AF]">
+                            {record.market.price_change_pct >= 0 ? "↑" : "↓"}{" "}
+                            {Math.abs(record.market.price_change_pct).toFixed(1)}% 24h
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-[#9CA3AF]">
+                            YES {Math.round(record.price_at_swipe.yes * 100)}% / NO{" "}
+                            {Math.round(record.price_at_swipe.no * 100)}%
+                          </span>
+                        )}
                         <AIRecommendation analysis={record.analysis} compact />
                       </div>
                     </div>
@@ -260,7 +288,10 @@ export default function Dashboard() {
                   </div>
 
                   <div className="flex items-center gap-2 text-[10px] text-[#6B7280]">
-                    <span>{catConfig?.emoji} {catConfig?.label}</span>
+                    <span className={isCrypto ? "text-amber-500/80" : ""}>
+                      {catConfig?.emoji} {catConfig?.label}
+                    </span>
+                    {isCrypto && <span className="text-[8px] text-amber-500/40">via Liquid</span>}
                     <span>•</span>
                     <span>{timeAgo(record.timestamp)}</span>
                   </div>

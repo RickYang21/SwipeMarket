@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { AnimatePresence } from "framer-motion";
 import SwipeCard from "./SwipeCard";
 import { Market, MarketAnalysis } from "@/lib/types";
+import { isCryptoMarket } from "@/lib/liquid";
 import { useApp } from "@/stores/app-store";
 
 interface SwipeCardStackProps {
@@ -25,7 +26,13 @@ export default function SwipeCardStack({ markets, onRequestMore }: SwipeCardStac
     const toFetch = markets.slice(currentIndex, currentIndex + 3);
     toFetch.forEach((m) => {
       if (!analyses[m.id]) {
-        fetch(`/api/markets/${m.id}/analysis`, {
+        // Route to correct analysis endpoint based on source
+        const isCrypto = isCryptoMarket(m);
+        const url = isCrypto
+          ? `/api/liquid/${m.id}/analysis`
+          : `/api/markets/${m.id}/analysis`;
+
+        fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(m),
@@ -65,6 +72,8 @@ export default function SwipeCardStack({ markets, onRequestMore }: SwipeCardStac
 
     if (showHint) setShowHint(false);
 
+    const isCrypto = isCryptoMarket(market);
+
     if (direction === "right") {
       if (wallet.balance < betAmount) {
         showToast("Top up your wallet to keep betting!", "error");
@@ -73,7 +82,11 @@ export default function SwipeCardStack({ markets, onRequestMore }: SwipeCardStac
       }
       placeBet(market);
       addSwipe(market, analysis, "buy");
-      showToast(`Bought • -$${betAmount}`, "success");
+      if (isCrypto) {
+        showToast(`Bought ${market.question.split(" — ")[0]} • -$${betAmount}`, "success");
+      } else {
+        showToast(`Bought • -$${betAmount}`, "success");
+      }
     } else if (direction === "left") {
       addSwipe(market, analysis, "skip");
     } else {

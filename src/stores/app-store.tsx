@@ -118,6 +118,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const placeBet = useCallback((market: Market): boolean => {
     if (wallet.balance < betAmount) return false;
+    const isCrypto = market.source === "liquid";
+    const desc = isCrypto
+      ? `Bet on: ${market.question.split(" — ")[0]} via Liquid`
+      : `Bet on: ${market.question.slice(0, 50)}`;
     setWallet((prev) => ({
       balance: prev.balance - betAmount,
       transactions: [
@@ -125,7 +129,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           id: uuidv4(),
           type: "bet",
           amount: -betAmount,
-          description: `Bet on: ${market.question.slice(0, 50)}`,
+          description: desc,
           timestamp: new Date(),
           status: "completed",
         },

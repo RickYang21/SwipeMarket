@@ -9,6 +9,8 @@ const FILTER_KEYS = Object.keys(CATEGORY_CONFIG).filter((k) => k !== "crypto");
 export default function FilterScreen() {
   const { selectedCategories, toggleCategory, setExploreView } = useApp();
 
+  const isCryptoSelected = selectedCategories.includes("crypto");
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -30,6 +32,33 @@ export default function FilterScreen() {
       {/* Filter grid */}
       <div className="flex-1 overflow-y-auto">
         <div className="flex flex-wrap gap-3 justify-center">
+          {/* Crypto chip - special styling */}
+          <motion.button
+            whileTap={{ scale: 0.92 }}
+            onClick={() => toggleCategory("crypto")}
+            className={`relative flex flex-col items-center gap-0.5 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
+              isCryptoSelected
+                ? "bg-amber-500/15 border-amber-500/60 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.15)]"
+                : "bg-[#1C1C1E] border-[#2A2A2E] text-[#9CA3AF] hover:border-[#3A3A3E]"
+            } border`}
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-base">💰</span>
+              <span>Crypto</span>
+              {isCryptoSelected && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="w-1.5 h-1.5 rounded-full bg-amber-400"
+                />
+              )}
+            </div>
+            <span className={`text-[10px] ${isCryptoSelected ? "text-amber-500/60" : "text-[#6B7280]"}`}>
+              Powered by Liquid
+            </span>
+          </motion.button>
+
+          {/* Regular category chips */}
           {FILTER_KEYS.map((key) => {
             const config = CATEGORY_CONFIG[key];
             const isSelected = selectedCategories.includes(key);

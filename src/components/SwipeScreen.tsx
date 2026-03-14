@@ -9,31 +9,74 @@ import ActionButtons from "./ActionButtons";
 import CategoryPills from "./CategoryPills";
 import BetAmountPicker from "./BetAmountPicker";
 
+function mergeMarkets(polymarketCards: Market[], cryptoCards: Market[]): Market[] {
+  if (polymarketCards.length === 0) return cryptoCards;
+  if (cryptoCards.length === 0) return polymarketCards;
+  // Insert a crypto card every 3rd position
+  const merged: Market[] = [];
+  let pIdx = 0, cIdx = 0;
+  while (pIdx < polymarketCards.length || cIdx < cryptoCards.length) {
+    if (pIdx < polymarketCards.length) merged.push(polymarketCards[pIdx++]);
+    if (pIdx < polymarketCards.length) merged.push(polymarketCards[pIdx++]);
+    if (cIdx < cryptoCards.length) merged.push(cryptoCards[cIdx++]);
+  }
+  return merged;
+}
+
 export default function SwipeScreen() {
   const { selectedCategories, setExploreView, wallet, setActiveTab } = useApp();
   const [markets, setMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const hasCrypto = selectedCategories.includes("crypto");
+  const polymarketCategories = selectedCategories.filter((c) => c !== "crypto");
+
   const fetchMarkets = useCallback(async () => {
     if (selectedCategories.length === 0) return;
+
     try {
-      const res = await fetch(
-        `/api/markets?categories=${selectedCategories.join(",")}`
-      );
-      const data = await res.json();
-      if (data.markets) {
-        setMarkets((prev) => {
-          const existingIds = new Set(prev.map((m) => m.id));
-          const newMarkets = data.markets.filter((m: Market) => !existingIds.has(m.id));
-          return [...prev, ...newMarkets];
-        });
+      const promises: Promise<Market[]>[] = [];
+
+      // Fetch Polymarket if non-crypto categories selected
+      if (polymarketCategories.length > 0) {
+        promises.push(
+          fetch(`/api/markets?categories=${polymarketCategories.join(",")}`)
+            .then((r) => r.json())
+            .then((data) => data.markets || [])
+            .catch(() => [])
+        );
+      } else {
+        promises.push(Promise.resolve([]));
       }
+
+      // Fetch Liquid crypto if crypto selected
+      if (hasCrypto) {
+        promises.push(
+          fetch("/api/liquid")
+            .then((r) => r.json())
+            .then((data) => data.markets || [])
+            .catch(() => [])
+        );
+      } else {
+        promises.push(Promise.resolve([]));
+      }
+
+      const [polymarketData, cryptoData] = await Promise.all(promises);
+
+      // Merge and deduplicate
+      const merged = mergeMarkets(polymarketData, cryptoData);
+
+      setMarkets((prev) => {
+        const existingIds = new Set(prev.map((m) => m.id));
+        const newMarkets = merged.filter((m: Market) => !existingIds.has(m.id));
+        return [...prev, ...newMarkets];
+      });
     } catch (e) {
       console.error("Failed to fetch markets:", e);
     } finally {
       setLoading(false);
     }
-  }, [selectedCategories]);
+  }, [selectedCategories, polymarketCategories, hasCrypto]);
 
   useEffect(() => {
     setMarkets([]);
@@ -110,7 +153,6 @@ export default function SwipeScreen() {
       <div className="flex-shrink-0 pb-20">
         <ActionButtons
           onSkip={() => {
-            // Dispatch a custom event that SwipeCardStack listens to
             window.dispatchEvent(new CustomEvent("swipe-action", { detail: "left" }));
           }}
           onWatchlist={() => {

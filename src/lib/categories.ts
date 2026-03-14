@@ -12,6 +12,7 @@ export const CATEGORY_KEYWORDS: Record<string, string[]> = {
   politics: ["president", "election", "Senate", "Congress", "governor", "Trump", "Biden", "vote", "political", "Democrat", "Republican"],
   world_events: ["war", "treaty", "UN", "climate", "country", "government", "China", "Russia", "Ukraine"],
   entertainment: ["Oscar", "Grammy", "movie", "album", "TV", "celebrity", "award", "Netflix", "music"],
+  crypto: ["BTC", "ETH", "SOL", "crypto", "bitcoin", "ethereum"],
 };
 
 export const CATEGORY_CONFIG: Record<string, { emoji: string; label: string }> = {
