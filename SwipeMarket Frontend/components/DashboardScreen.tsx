@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useApp } from "@/context/AppContext";
 import { motion } from "framer-motion";
 
@@ -9,6 +9,8 @@ type TabFilter = "all" | "buys" | "watchlist";
 export default function DashboardScreen() {
     const { state, dispatch } = useApp();
     const [activeTab, setActiveTab] = useState<TabFilter>("all");
+    const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const buys = state.swipeHistory.filter((s) => s.action === "buy");
     const skips = state.swipeHistory.filter((s) => s.action === "skip");
@@ -23,20 +25,45 @@ export default function DashboardScreen() {
         return Math.round(total / state.swipeHistory.length);
     }, [state.swipeHistory]);
 
+    // Fetch real live prices for open Polymarket positions
+    useEffect(() => {
+        const openPolymarketIds = buys
+            .filter((s) => !s.sold && s.market.source !== "liquid")
+            .map((s) => s.market.id);
+
+        const fetchPrices = async () => {
+            if (openPolymarketIds.length === 0) return;
+            try {
+                const res = await fetch(`/api/markets/prices?ids=${openPolymarketIds.join(",")}`);
+                if (!res.ok) return;
+                const { prices } = await res.json();
+                setLivePrices((prev) => ({ ...prev, ...prices }));
+            } catch { /* keep previous prices on error */ }
+        };
+
+        fetchPrices();
+        pollRef.current = setInterval(fetchPrices, 5000);
+        return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [buys.length]);
+
+    const getLivePrice = (record: (typeof state.swipeHistory)[0]): number => {
+        if (record.sold && record.sell_price != null) return record.sell_price;
+        const live = livePrices[record.market.id];
+        return live ?? record.yes_price_at_swipe;
+    };
+
     const totalPnL = useMemo(() => {
         return buys.reduce((acc, s) => {
             if (s.sold) return acc;
-            const drift = Math.sin(s.timestamp * 0.001) * 0.05;
-            const currentPrice = Math.min(
-                0.99,
-                Math.max(0.01, s.yes_price_at_swipe + drift)
-            );
+            const currentPrice = getLivePrice(s);
             const pnl =
                 ((currentPrice - s.yes_price_at_swipe) / s.yes_price_at_swipe) *
                 s.bet_amount;
             return acc + pnl;
         }, 0);
-    }, [buys]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [buys, livePrices]);
 
     const filteredHistory = useMemo(() => {
         switch (activeTab) {
@@ -235,10 +262,7 @@ export default function DashboardScreen() {
                     <div className="flex flex-col gap-2">
                         {filteredHistory.map((record, idx) => {
                             const badge = getActionBadge(record.action, record.sold);
-                            const drift = Math.sin(record.timestamp * 0.001) * 0.05;
-                            const currentPrice = record.sold && record.sell_price != null
-                                ? record.sell_price
-                                : Math.min(0.99, Math.max(0.01, record.yes_price_at_swipe + drift));
+                            const currentPrice = getLivePrice(record);
                             const pnlPct = record.action === "buy"
                                 ? ((currentPrice - record.yes_price_at_swipe) / record.yes_price_at_swipe) * 100
                                 : 0;
