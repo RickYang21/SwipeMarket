@@ -231,7 +231,7 @@ export default function SwipeCard({ market, analysis, onSwipe, isTop, index, sho
               <MarketStats volume={market.volume} liquidity={market.liquidity} volume24h={market.volume_24h} />
 
               {analysis ? (
-                <AIRecommendation analysis={analysis} marketYesPrice={market.yes_price} />
+                <AIRecommendation analysis={analysis} />
               ) : (
                 <div className="bg-[#1A1A2E] rounded-xl p-3 space-y-2">
                   <div className="h-6 w-24 bg-white/5 rounded-full animate-pulse" />

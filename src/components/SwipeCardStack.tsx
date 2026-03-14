@@ -43,7 +43,7 @@ export default function SwipeCardStack({ markets, onRequestMore }: SwipeCardStac
               setAnalyses((prev) => ({ ...prev, [m.id]: data.analysis }));
             }
           })
-          .catch(() => {});
+          .catch(() => { });
       }
     });
   }, [currentIndex, markets, analyses]);
