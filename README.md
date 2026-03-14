@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SwipeMarket
 
-## Getting Started
+**Tinder for prediction markets** — swipe to discover, filter by what you care about, get AI-powered buy signals, track your portfolio.
 
-First, run the development server:
+## How it works
+
+1. **Filter** — Pick your markets: NBA, UFC, Politics, and more
+2. **Swipe** — Swipe right to buy, left to skip, up to watchlist. Each card shows full market data + an AI recommendation.
+3. **Track** — Dashboard with full portfolio overview, P&L tracking, and swipe history
+
+## Tech stack
+
+- **Next.js 14** (App Router, TypeScript)
+- **Tailwind CSS** (dark luxury theme)
+- **Framer Motion** (swipe gestures + animations)
+- **Polymarket CLOB API** (gamma-api.polymarket.com)
+- **Anthropic API** (Claude claude-sonnet-4-20250514 for AI analysis)
+
+## Getting started
 
 ```bash
+npm install
+cp .env.example .env.local   # Add your ANTHROPIC_API_KEY (optional)
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) and start swiping.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The app works fully without an API key — AI analysis falls back to smart mock data.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Hackathon tracks
 
-## Learn More
+- **Polymarket Prediction Markets Track** ($2k) — core app
+- **Liquid Trading Interfaces Track** ($4k/$2k) — crypto category (stretch goal)
 
-To learn more about Next.js, take a look at the following resources:
+## Features
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Realistic iPhone 15 Pro frame shell
+- Category filter screen with 13+ sports, politics, and event categories
+- Full Polymarket market data on each card (odds, volume, liquidity)
+- AI-powered BUY/SKIP recommendation with confidence scores
+- Swipe physics with spring animations, stamps, and edge glows
+- Dashboard with portfolio stats, donut chart, and expandable history cards
+- Wallet with add funds, withdraw, and transaction history
+- P&L tracking tied to real bet amounts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deploy
 
-## Deploy on Vercel
+Configured for Vercel deployment. Just connect your repo and deploy.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Built for the hackathon by the SwipeMarket team.

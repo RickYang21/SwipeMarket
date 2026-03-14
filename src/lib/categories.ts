@@ -1,0 +1,32 @@
+export const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  nba: ["NBA", "Lakers", "Celtics", "basketball", "Finals", "MVP", "Bucks", "Warriors", "Knicks", "76ers"],
+  nfl: ["NFL", "Super Bowl", "football", "touchdown", "quarterback", "Chiefs", "Eagles"],
+  mlb: ["MLB", "baseball", "World Series", "home run", "Yankees", "Dodgers"],
+  hockey: ["NHL", "hockey", "Stanley Cup", "Bruins", "Rangers"],
+  soccer: ["FIFA", "Premier League", "Champions League", "soccer", "World Cup", "MLS"],
+  ufc: ["UFC", "MMA", "fight", "knockout", "bout", "boxing"],
+  f1: ["F1", "Formula 1", "Grand Prix", "racing", "NASCAR"],
+  tennis: ["tennis", "Wimbledon", "US Open", "French Open", "Australian Open"],
+  college_football: ["college football", "CFP", "NCAA football", "bowl game"],
+  college_basketball: ["March Madness", "NCAA basketball", "college basketball"],
+  politics: ["president", "election", "Senate", "Congress", "governor", "Trump", "Biden", "vote", "political", "Democrat", "Republican"],
+  world_events: ["war", "treaty", "UN", "climate", "country", "government", "China", "Russia", "Ukraine"],
+  entertainment: ["Oscar", "Grammy", "movie", "album", "TV", "celebrity", "award", "Netflix", "music"],
+};
+
+export const CATEGORY_CONFIG: Record<string, { emoji: string; label: string }> = {
+  nba: { emoji: "🏀", label: "NBA" },
+  nfl: { emoji: "🏈", label: "NFL" },
+  mlb: { emoji: "⚾", label: "MLB" },
+  hockey: { emoji: "🏒", label: "Hockey" },
+  soccer: { emoji: "⚽", label: "Soccer" },
+  ufc: { emoji: "🥊", label: "UFC / MMA" },
+  f1: { emoji: "🏎️", label: "F1 / Racing" },
+  tennis: { emoji: "🎾", label: "Tennis" },
+  college_football: { emoji: "🏈", label: "College Football" },
+  college_basketball: { emoji: "🏀", label: "College Basketball" },
+  politics: { emoji: "🗳️", label: "Politics" },
+  world_events: { emoji: "🌍", label: "World Events" },
+  entertainment: { emoji: "🎬", label: "Entertainment" },
+  crypto: { emoji: "💰", label: "Crypto" },
+};
