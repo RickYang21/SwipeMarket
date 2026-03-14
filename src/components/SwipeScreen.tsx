@@ -28,19 +28,22 @@ export default function SwipeScreen() {
   const [markets, setMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const hasCrypto = selectedCategories.includes("crypto");
-  const polymarketCategories = selectedCategories.filter((c) => c !== "crypto");
-
   const fetchMarkets = useCallback(async () => {
-    if (selectedCategories.length === 0) return;
+    if (selectedCategories.length === 0) {
+      setLoading(false);
+      return;
+    }
+
+    const polymarketCats = selectedCategories.filter((c) => c !== "crypto");
+    const wantsCrypto = selectedCategories.includes("crypto");
 
     try {
       const promises: Promise<Market[]>[] = [];
 
       // Fetch Polymarket if non-crypto categories selected
-      if (polymarketCategories.length > 0) {
+      if (polymarketCats.length > 0) {
         promises.push(
-          fetch(`/api/markets?categories=${polymarketCategories.join(",")}`)
+          fetch(`/api/markets?categories=${polymarketCats.join(",")}`)
             .then((r) => r.json())
             .then((data) => data.markets || [])
             .catch(() => [])
@@ -50,7 +53,7 @@ export default function SwipeScreen() {
       }
 
       // Fetch Liquid crypto if crypto selected
-      if (hasCrypto) {
+      if (wantsCrypto) {
         promises.push(
           fetch("/api/liquid")
             .then((r) => r.json())
@@ -76,13 +79,13 @@ export default function SwipeScreen() {
     } finally {
       setLoading(false);
     }
-  }, [selectedCategories, polymarketCategories, hasCrypto]);
+  }, [selectedCategories]);
 
   useEffect(() => {
     setMarkets([]);
     setLoading(true);
     fetchMarkets();
-  }, [selectedCategories, fetchMarkets]);
+  }, [fetchMarkets]);
 
   return (
     <motion.div
