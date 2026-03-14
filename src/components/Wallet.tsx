@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "@/stores/app-store";
+import { Plus, ChevronRight, Settings } from "lucide-react";
 import AddFundsSheet from "./AddFundsSheet";
 import WithdrawSheet from "./WithdrawSheet";
 
@@ -60,21 +61,21 @@ export default function WalletView() {
           onClick={() => setShowAddFunds(true)}
           className="flex-1 py-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-semibold text-sm"
         >
-          ➕ Add Funds
+          <Plus size={16} className="inline mr-1" /> Add Funds
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={() => setShowWithdraw(true)}
           className="flex-1 py-3 rounded-2xl border border-white/10 bg-white/5 text-white font-semibold text-sm"
         >
-          💸 Withdraw
+          Withdraw
         </motion.button>
       </div>
 
       {/* Bet settings */}
       <div className="bg-[#1C1C1E] rounded-2xl p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-white font-medium">Default bet amount</span>
+          <span className="text-sm text-white font-medium flex items-center gap-2"><Settings size={16} className="text-zinc-400" /> Bet Settings</span>
           <span className="text-xs text-[#9CA3AF]">
             {Math.floor(wallet.balance / betAmount)} bets remaining
           </span>
@@ -125,6 +126,18 @@ export default function WalletView() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Liquid Network */}
+      <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold font-mono text-xs">USDC</div>
+          <div>
+            <p className="text-sm font-bold">Liquid Network</p>
+            <p className="text-xs text-zinc-500">Crypto deposits active</p>
+          </div>
+        </div>
+        <ChevronRight size={16} className="text-zinc-600" />
       </div>
 
       {/* Bottom sheets */}
