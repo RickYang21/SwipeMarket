@@ -10,17 +10,18 @@ const SYSTEM_PROMPT = `You are a prediction market analyst. You will be given a 
 
 Your job:
 1. Research the actual facts, stats, and recent data relevant to this market.
-2. Produce 3 to 5 concise bullet points that give the user a real informational edge.
+2. Produce EXACTLY 3 bullet points (Bull, Bear, Edge) that give the user a real informational edge.
 3. After the bullet points, output a RECOMMENDATION line and a RISK line.
 
 STRICT FORMATTING RULES:
-- Each bullet point must be MAX 2 lines long. Be ruthless about brevity.
-- Wrap key names, numbers, stats, percentages, and critical phrases in **bold** using double asterisks.
+- You must return EXACTLY 3 bullet points.
+- Each bullet point MUST be under 12 words (maximum 80 characters).
+- Get straight to the point. No filler words. No introductory clauses.
+- Wrap 1 or 2 key words (names, numbers, percentages) in **bold** using double asterisks.
 - Start each bullet with a dot separator: •
 - Never use em dashes. Use commas or periods to break up ideas.
-- Write in plain, direct language. No filler words. No hedging phrases like "it's worth noting" or "it should be considered."
 - Never say "historically strong" or "has been dominant" without backing it with a specific stat or number.
-- Every bullet must contain at least one concrete data point (a number, a date, a name, a record, a percentage).
+- Every bullet must contain at least one concrete data point.
 
 CONTENT RULES:
 - Focus on facts that directly move the needle on YES or NO. Cut anything generic.
@@ -44,11 +45,9 @@ Output a percentage from 0-100 representing your confidence in the recommendatio
 
 OUTPUT FORMAT (return ONLY this, no extra commentary):
 
-• [bullet 1]
-• [bullet 2]
-• [bullet 3]
-• [bullet 4 if needed]
-• [bullet 5 if needed]
+• [bull bullet < 12 words]
+• [bear bullet < 12 words]
+• [edge bullet < 12 words]
 
 RECOMMENDATION: [label]
 RISK: [level]
@@ -245,29 +244,29 @@ function generateMockCryptoAnalysis(market: CryptoMarket): MarketAnalysis {
 
   const bulletSets: Record<string, string[]> = {
     "STRONG BUY": [
-      `**${base}** is ${dir} **${pct}** and trading near the **24h low**, classic dip-buy setup`,
-      `Volume is strong at **${volStr}**, confirming real buyer interest`,
-      `Spread is **$${market.spread.toFixed(2)}**, tight enough for a clean entry and exit`,
+      `**${base}** near 24h low, classic **dip-buy** setup`,
+      `Strong volume of **${volStr}** confirms buyer interest`,
+      `Tight **$${market.spread.toFixed(2)}** spread allows clean entry`,
     ],
     "LEAN BUY": [
-      `**${base}** shows solid momentum, ${dir} **${pct}** with healthy volume of **${volStr}**`,
-      `Price sits in a **favorable range**, not overextended but showing conviction`,
-      `Good **risk/reward** setup for a swing position at current levels`,
+      `Solid momentum, ${dir} **${pct}** on ${volStr} volume`,
+      `Price in **favorable range**, showing conviction`,
+      `Good **risk/reward** for a swing position`,
     ],
     "WATCH": [
-      `**${base}** is ${dir} **${pct}** with moderate signals, no clear edge yet`,
-      `Volume at **${volStr}** is decent but the setup **isn't perfect**`,
-      `Watch the **24h range boundaries** for a breakout or rejection`,
+      `Moderate signals, no **clear edge** yet`,
+      `Decent **${volStr}** volume but setup is imperfect`,
+      `Watch **24h boundaries** for a breakout`,
     ],
     "LEAN SELL": [
-      `**${base}** is near the **24h high** after a **${pct}** move, too extended`,
-      `**Pullback risk** outweighs remaining upside at this level`,
-      `Better to **wait for a dip** or look at other pairs`,
+      `Extremely extended near **24h high**, reversing likely`,
+      `High **pullback risk** overweights remaining upside`,
+      `Wait for **significant dip** to re-enter`,
     ],
     "STRONG SELL": [
-      `**${base}** is severely overextended after **${pct}** move, reversal likely`,
-      `Volume is fading at **${volStr}**, suggesting exhaustion`,
-      `Risk of **5-10% correction** from current levels is elevated`,
+      `Severely overextended after **${pct}** move`,
+      `Fading **${volStr}** volume points to exhaustion`,
+      `Risk of **5-10% correction** is elevated`,
     ],
   };
 

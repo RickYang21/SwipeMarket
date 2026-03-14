@@ -144,24 +144,11 @@ function RichText({ text, className }: { text: string; className?: string }) {
 function BulletRow({ text }: { text: string }) {
     if (!text) return null;
 
-    // Truncate to ~140 chars, but clean up any broken bold markers
-    let truncated = text.length > 140 ? text.slice(0, 137) : text;
-    if (text.length > 140) {
-        // Strip any unclosed ** at the end
-        const openCount = (truncated.match(/\*\*/g) || []).length;
-        if (openCount % 2 !== 0) {
-            // Odd number of ** means one is unclosed — remove the last one
-            const lastIdx = truncated.lastIndexOf("**");
-            truncated = truncated.slice(0, lastIdx).trimEnd();
-        }
-        truncated += "...";
-    }
-
     return (
         <div className="flex items-start gap-2">
             <span className="text-accent-gold/60 text-[8px] mt-[5px] shrink-0">&#9679;</span>
             <RichText
-                text={truncated}
+                text={text}
                 className="text-[12px] text-secondary/70 leading-snug"
             />
         </div>

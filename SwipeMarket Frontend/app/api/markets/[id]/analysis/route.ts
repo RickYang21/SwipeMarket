@@ -9,17 +9,18 @@ const SYSTEM_PROMPT = `You are a prediction market analyst. You will be given a 
 
 Your job:
 1. Research the actual facts, stats, and recent data relevant to this market.
-2. Produce 3 to 5 concise bullet points that give the user a real informational edge.
+2. Produce EXACTLY 3 bullet points (Bull, Bear, Edge) that give the user a real informational edge.
 3. After the bullet points, output a RECOMMENDATION line and a RISK line.
 
 STRICT FORMATTING RULES:
-- Each bullet point must be MAX 2 lines long. Be ruthless about brevity.
-- Wrap key names, numbers, stats, percentages, and critical phrases in **bold** using double asterisks.
+- You must return EXACTLY 3 bullet points.
+- Each bullet point MUST be under 12 words (maximum 80 characters).
+- Get straight to the point. No filler words. No introductory clauses.
+- Wrap 1 or 2 key words (names, numbers, percentages) in **bold** using double asterisks.
 - Start each bullet with a dot separator: •
 - Never use em dashes. Use commas or periods to break up ideas.
-- Write in plain, direct language. No filler words. No hedging phrases like "it's worth noting" or "it should be considered."
 - Never say "historically strong" or "has been dominant" without backing it with a specific stat or number.
-- Every bullet must contain at least one concrete data point (a number, a date, a name, a record, a percentage).
+- Every bullet must contain at least one concrete data point.
 
 CONTENT RULES:
 - Focus on facts that directly move the needle on YES or NO. Cut anything generic.
@@ -45,11 +46,9 @@ Output a percentage from 0-100 representing your confidence in the recommendatio
 
 OUTPUT FORMAT (return ONLY this, no extra commentary):
 
-• [bullet 1]
-• [bullet 2]
-• [bullet 3]
-• [bullet 4 if needed]
-• [bullet 5 if needed]
+• [bull bullet < 12 words]
+• [bear bullet < 12 words]
+• [edge bullet < 12 words]
 
 RECOMMENDATION: [label]
 RISK: [level]
@@ -255,29 +254,29 @@ function generateMockAnalysis(market: Market): MarketAnalysis {
 
   const bulletSets: Record<string, string[]> = {
     "STRONG BUY": [
-      `Tight contest at **${yPct}% YES** with strong liquid volume of **${volStr}**`,
-      `This is exactly the kind of **pricing inefficiency** that sharp money targets`,
-      `Smart money hasn't fully moved in yet, leaving a **clean entry** window`,
+      `**${yPct}% YES** with heavy liquid volume`,
+      `**Pricing inefficiency** targeted by sharp money`,
+      `Clean entry before **smart money** arrives`,
     ],
     "LEAN BUY": [
-      `Market offers **solid value** at **${yPct}%** implied probability`,
-      `Trading volume of **${volStr}** shows real, sustained interest`,
-      `Current price doesn't fully reflect the **underlying momentum**`,
+      `Offers **solid value** at ${yPct}% probability`,
+      `High volume of **${volStr}** shows interest`,
+      `Price lags **underlying momentum**`,
     ],
     "WATCH": [
-      `The **${yPct}%** price feels **slightly off** but the edge is too thin to act on`,
-      `Volume of **${volStr}** shows interest but the market could swing either way`,
-      `Better to **wait for a catalyst** before taking a position`,
+      `Price around **${yPct}%** lacks clear edge`,
+      `Volume of **${volStr}** shows split interest`,
+      `Wait for **clearer catalyst** to enter`,
     ],
     "LEAN SELL": [
-      `At **${yPct}% YES**, the market has **already priced in** most of the upside`,
-      `The risk/reward ratio **doesn't justify entry** at current levels`,
-      `Better to **wait for better odds** or look for value elsewhere`,
+      `Most upside **already priced in**`,
+      `Poor **risk/reward** at current levels`,
+      `Better to **wait for better odds**`,
     ],
     "STRONG SELL": [
-      `At **${yPct}% YES**, the market is **significantly overpriced** relative to fundamentals`,
-      `NO side at **${100 - yPct}c** offers much better value`,
-      `Smart money is likely to **push this down** as more data comes in`,
+      `Market is **significantly overpriced** fundamentals`,
+      `NO side offers **better value**`,
+      `Smart money expected to **push down** quickly`,
     ],
   };
 
