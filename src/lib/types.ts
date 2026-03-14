@@ -8,6 +8,7 @@ export interface Market {
   volume_24h: number;
   liquidity: number;
   end_date: string;
+  event_date: string;
   image: string;
   category: string;
   outcomes: string[];

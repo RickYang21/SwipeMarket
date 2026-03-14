@@ -16,6 +16,25 @@ interface SwipeCardProps {
   showHint: boolean;
 }
 
+function formatEventDate(dateStr: string): string {
+  const eventDate = new Date(dateStr);
+  const now = new Date();
+
+  // Compare dates in local time
+  const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.round((eventDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const monthDay = `${months[eventDate.getMonth()]} ${eventDate.getDate()}`;
+
+  if (diffDays === 0) return `Today, ${monthDay}`;
+  if (diffDays === 1) return `Tomorrow, ${monthDay}`;
+  if (diffDays > 1 && diffDays <= 6) return `${days[eventDate.getDay()]}, ${monthDay}`;
+  return monthDay;
+}
+
 function timeUntil(dateStr: string): string {
   const diff = new Date(dateStr).getTime() - Date.now();
   if (diff < 0) return "Ended";
@@ -52,6 +71,9 @@ export default function SwipeCard({ market, analysis, onSwipe, isTop, index, sho
   const yOffset = index * 10;
   const opacity = 1 - index * 0.15;
   const catConfig = CATEGORY_CONFIG[market.category];
+
+  const eventDateStr = formatEventDate(market.event_date);
+  const countdown = timeUntil(market.end_date);
 
   return (
     <motion.div
@@ -94,9 +116,9 @@ export default function SwipeCard({ market, analysis, onSwipe, isTop, index, sho
             {catConfig?.emoji} {catConfig?.label}
           </div>
 
-          {/* Time pill */}
+          {/* Date + countdown pill */}
           <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm text-[10px] font-medium text-[#9CA3AF]">
-            {timeUntil(market.end_date)}
+            {eventDateStr} · {countdown}
           </div>
         </div>
 
