@@ -1,9 +1,108 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { MarketAnalysis, Market } from "@/lib/types";
+import { MarketAnalysis, Market } from "@/types/types";
 
 const analysisCache = new Map<string, { data: MarketAnalysis; timestamp: number }>();
 const CACHE_TTL = 5 * 60_000; // 5 minutes
+
+const SYSTEM_PROMPT = `You are a prediction market analyst. You will be given a market question, its current YES/NO pricing, and relevant context (category, event date, teams/entities involved).
+
+Your job:
+1. Research the actual facts, stats, and recent data relevant to this market.
+2. Produce 3 to 5 concise bullet points that give the user a real informational edge.
+3. After the bullet points, output a RECOMMENDATION line and a RISK line.
+
+STRICT FORMATTING RULES:
+- Each bullet point must be MAX 2 lines long. Be ruthless about brevity.
+- Wrap key names, numbers, stats, percentages, and critical phrases in **bold** using double asterisks.
+- Start each bullet with a dot separator: •
+- Never use em dashes. Use commas or periods to break up ideas.
+- Write in plain, direct language. No filler words. No hedging phrases like "it's worth noting" or "it should be considered."
+- Never say "historically strong" or "has been dominant" without backing it with a specific stat or number.
+- Every bullet must contain at least one concrete data point (a number, a date, a name, a record, a percentage).
+
+CONTENT RULES:
+- Focus on facts that directly move the needle on YES or NO. Cut anything generic.
+- Prioritize: recent head-to-head results, current form/streaks, key injuries or absences, relevant stats from this season, and any confirmed lineup or roster info.
+- If the market is about sports, pull from recent game scores, season records, point averages, and matchup history.
+- If the market is about world events, politics, or crypto, pull from recent news developments, polling data, on-chain metrics, or official statements.
+- Do NOT fabricate stats. If you lack specific data, say what the general trend is with whatever specifics you do have.
+
+RECOMMENDATION LINE:
+After the bullets, output one of these labels based on your analysis:
+- STRONG BUY (high confidence YES is underpriced)
+- LEAN BUY (moderate confidence YES is underpriced)
+- WATCH (too close to call or insufficient edge)
+- LEAN SELL (moderate confidence NO is underpriced)
+- STRONG SELL (high confidence NO is underpriced)
+
+RISK LINE:
+Output one of: Low Risk | Med Risk | High Risk
+Based on how much uncertainty or volatility remains before resolution.
+
+CONFIDENCE SCORE:
+Output a percentage from 0-100 representing your confidence in the recommendation.
+
+OUTPUT FORMAT (return ONLY this, no extra commentary):
+
+• [bullet 1]
+• [bullet 2]
+• [bullet 3]
+• [bullet 4 if needed]
+• [bullet 5 if needed]
+
+RECOMMENDATION: [label]
+RISK: [level]
+CONFIDENCE: [number]%`;
+
+function parseAnalysisResponse(text: string): MarketAnalysis {
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+
+  // Extract bullets (lines starting with •)
+  const bullets = lines
+    .filter((l) => l.startsWith("•"))
+    .map((l) => l.replace(/^•\s*/, "").trim())
+    .slice(0, 5);
+
+  // Extract RECOMMENDATION
+  const recLine = lines.find((l) => l.toUpperCase().startsWith("RECOMMENDATION:"));
+  const recLabel = recLine
+    ? recLine.replace(/^RECOMMENDATION:\s*/i, "").trim().toUpperCase()
+    : "WATCH";
+
+  const verdictMap: Record<string, MarketAnalysis["verdict"]> = {
+    "STRONG BUY": "STRONG BUY",
+    "LEAN BUY": "LEAN BUY",
+    "WATCH": "WATCH",
+    "LEAN SELL": "LEAN SELL",
+    "STRONG SELL": "STRONG SELL",
+  };
+  const verdict = verdictMap[recLabel] || "WATCH";
+
+  // Extract RISK
+  const riskLine = lines.find((l) => l.toUpperCase().startsWith("RISK:"));
+  const riskLabel = riskLine
+    ? riskLine.replace(/^RISK:\s*/i, "").trim().toLowerCase()
+    : "medium";
+
+  const riskMap: Record<string, MarketAnalysis["risk_level"]> = {
+    "low risk": "low",
+    "low": "low",
+    "med risk": "medium",
+    "medium risk": "medium",
+    "medium": "medium",
+    "high risk": "high",
+    "high": "high",
+  };
+  const risk_level = riskMap[riskLabel] || "medium";
+
+  // Extract CONFIDENCE
+  const confLine = lines.find((l) => l.toUpperCase().startsWith("CONFIDENCE:"));
+  const confMatch = confLine?.match(/(\d+)/);
+  const confidence = confMatch ? Math.min(100, Math.max(0, parseInt(confMatch[1]))) : 60;
+
+  return { verdict, confidence, bullets, risk_level };
+}
 
 async function webSearch(query: string): Promise<string> {
   try {
@@ -59,58 +158,32 @@ export async function POST(request: NextRequest) {
 
     const client = new Anthropic({ apiKey });
 
+    const daysLeft = market.end_date === "Ongoing"
+      ? "Ongoing"
+      : `${Math.max(0, Math.ceil((new Date(market.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} days`;
+
     const response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 800,
-      system: `You are an elite prediction market analyst on a mobile trading app. You combine market data with real-world research to give clear, actionable signals.
-
-Your analysis must be scannable — users swipe through markets fast.
-
-FORMATTING RULES:
-- Use bullet points (start each line with •) for reasoning, bull_case, and bear_case
-- Bold **key terms** that help users scan (names, percentages, key facts, dates)
-- Keep each bullet to ONE short sentence
-- Be specific — cite real facts, stats, or events, not generic statements
-
-Respond in this EXACT JSON format only, with no other text:
-{
-  "verdict": "STRONG BUY" | "BUY" | "LEAN BUY" | "SKIP",
-  "confidence": <number 0-100>,
-  "reasoning": "<3-4 bullet points starting with •, separated by \\n, with **bold** key terms>",
-  "bull_case": "<1-2 bullet points starting with •>",
-  "bear_case": "<1-2 bullet points starting with •>",
-  "edge": "<1 sentence about mispricing, **bold** the key insight>",
-  "risk_level": "low" | "medium" | "high"
-}`,
+      system: SYSTEM_PROMPT,
       messages: [
         {
           role: "user",
-          content: `Analyze this prediction market:
-
-Question: ${market.question}
-Description: ${market.description}
-Current YES price: ${market.yes_price} (${Math.round(market.yes_price * 100)}% implied probability)
-Current NO price: ${market.no_price} (${Math.round(market.no_price * 100)}% implied probability)
-Total volume: $${market.volume.toLocaleString()}
-24h volume: $${market.volume_24h.toLocaleString()}
-Liquidity: $${market.liquidity.toLocaleString()}
-End date: ${market.end_date}
+          content: `Market: "${market.question}"
 Category: ${market.category}
+YES price: ${Math.round(market.yes_price * 100)}c | NO price: ${Math.round(market.no_price * 100)}c
+Volume: $${market.volume.toLocaleString()} | Liquidity: $${market.liquidity.toLocaleString()} | 24h Volume: $${market.volume_24h.toLocaleString()}
+Time remaining: ${daysLeft}
 
 ${research}
 
-Give your trading analysis in the required JSON format. Reference specific facts from the research in your bullet points where relevant.`,
+Analyze this market. Give me data-backed bullet points with bolded key info.`,
         },
       ],
     });
 
     const text = response.content[0].type === "text" ? response.content[0].text : "";
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("No JSON in response");
-    }
-
-    const analysis: MarketAnalysis = JSON.parse(jsonMatch[0]);
+    const analysis = parseAnalysisResponse(text);
     analysisCache.set(market.id, { data: analysis, timestamp: Date.now() });
 
     return NextResponse.json({ analysis });
@@ -129,12 +202,13 @@ Give your trading analysis in the required JSON format. Reference specific facts
     }
 
     const fallback: MarketAnalysis = {
-      verdict: "LEAN BUY",
+      verdict: "WATCH",
       confidence: 55,
-      reasoning: "• Market data suggests **moderate opportunity**\n• Volume indicates **decent interest** but needs closer look\n• Odds haven't fully adjusted to **recent developments**",
-      bull_case: "• Current pricing may **underweight momentum** factors",
-      bear_case: "• Limited **liquidity** could make exit difficult",
-      edge: "Market sentiment hasn't fully priced in **recent developments**",
+      bullets: [
+        "Market data suggests **moderate opportunity** but more research needed",
+        "Volume indicates **decent interest** from active traders",
+        "Odds haven't fully adjusted to **recent developments**",
+      ],
       risk_level: "medium",
     };
     return NextResponse.json({ analysis: fallback });
@@ -145,7 +219,6 @@ function generateMockAnalysis(market: Market): MarketAnalysis {
   const yesPrice = market.yes_price;
   const volume = market.volume;
 
-  // Generate contextually relevant analysis based on market data
   const isHighVolume = volume > 1_000_000;
   const isCloseOdds = Math.abs(yesPrice - 0.5) < 0.15;
   const isLongShot = yesPrice < 0.25;
@@ -160,58 +233,58 @@ function generateMockAnalysis(market: Market): MarketAnalysis {
     confidence = 72 + Math.floor(Math.random() * 15);
     risk_level = "medium";
   } else if (isCloseOdds) {
-    verdict = "BUY";
+    verdict = "LEAN BUY";
     confidence = 62 + Math.floor(Math.random() * 15);
     risk_level = "medium";
   } else if (isLongShot && isHighVolume) {
-    verdict = "LEAN BUY";
+    verdict = "WATCH";
     confidence = 55 + Math.floor(Math.random() * 15);
     risk_level = "high";
   } else if (isFavorite) {
-    verdict = "SKIP";
+    verdict = "LEAN SELL";
     confidence = 65 + Math.floor(Math.random() * 15);
     risk_level = "low";
   } else {
-    verdict = Math.random() > 0.4 ? "BUY" : "LEAN BUY";
+    verdict = Math.random() > 0.4 ? "LEAN BUY" : "WATCH";
     confidence = 58 + Math.floor(Math.random() * 20);
     risk_level = "medium";
   }
 
-  const reasonings = {
-    "STRONG BUY": `• Tight contest at **${Math.round(yesPrice * 100)}% YES** with strong liquid volume\n• This is exactly the kind of **pricing inefficiency** we look for\n• Smart money hasn't fully moved in yet, leaving a **clean entry/exit** window`,
-    "BUY": `• Market offers **solid value** at ${Math.round(yesPrice * 100)}% implied probability\n• High trading volume of **$${(volume / 1_000_000).toFixed(1)}M** shows real interest\n• Current price doesn't fully reflect the **underlying momentum**`,
-    "LEAN BUY": `• The ${Math.round(yesPrice * 100)}% price feels **slightly off** given fundamentals\n• Offers an **interesting opportunity** but requires risk management\n• Market could easily swing, so size your position **conservatively**`,
-    "SKIP": `• At ${Math.round(yesPrice * 100)}% YES, the market has **already priced in** the upside\n• The risk/reward ratio **doesn't justify entry** at this high level\n• Better to **wait for better odds** or look for value elsewhere`,
+  const yPct = Math.round(yesPrice * 100);
+  const volStr = `$${(volume / 1_000_000).toFixed(1)}M`;
+
+  const bulletSets: Record<string, string[]> = {
+    "STRONG BUY": [
+      `Tight contest at **${yPct}% YES** with strong liquid volume of **${volStr}**`,
+      `This is exactly the kind of **pricing inefficiency** that sharp money targets`,
+      `Smart money hasn't fully moved in yet, leaving a **clean entry** window`,
+    ],
+    "LEAN BUY": [
+      `Market offers **solid value** at **${yPct}%** implied probability`,
+      `Trading volume of **${volStr}** shows real, sustained interest`,
+      `Current price doesn't fully reflect the **underlying momentum**`,
+    ],
+    "WATCH": [
+      `The **${yPct}%** price feels **slightly off** but the edge is too thin to act on`,
+      `Volume of **${volStr}** shows interest but the market could swing either way`,
+      `Better to **wait for a catalyst** before taking a position`,
+    ],
+    "LEAN SELL": [
+      `At **${yPct}% YES**, the market has **already priced in** most of the upside`,
+      `The risk/reward ratio **doesn't justify entry** at current levels`,
+      `Better to **wait for better odds** or look for value elsewhere`,
+    ],
+    "STRONG SELL": [
+      `At **${yPct}% YES**, the market is **significantly overpriced** relative to fundamentals`,
+      `NO side at **${100 - yPct}c** offers much better value`,
+      `Smart money is likely to **push this down** as more data comes in`,
+    ],
   };
-
-  const bullCases = [
-    "Recent momentum and public sentiment strongly favor the YES outcome.",
-    "Key fundamentals are underpriced — the market hasn't caught up to recent developments.",
-    "Historical patterns suggest this type of event resolves YES more often than the market implies.",
-    "Strong institutional signals point to a higher probability than currently priced.",
-  ];
-
-  const bearCases = [
-    "Uncertainty remains high and the market could easily swing the other way.",
-    "Key variables are still unresolved — one development could tank this position.",
-    "The market may be correctly pricing in risk factors that aren't obvious at first glance.",
-    "Timing risk is significant — this could be right but too early to call.",
-  ];
-
-  const edges = [
-    `Market underprices the YES outcome by ~${5 + Math.floor(Math.random() * 10)}% based on recent signal analysis.`,
-    "Public sentiment diverges from sharp money — follow the smart capital.",
-    "The spread between this market and correlated markets suggests mispricing.",
-    `Volume spike suggests informed money moving in — the ${Math.round(yesPrice * 100)}% price won't last.`,
-  ];
 
   return {
     verdict,
     confidence,
-    reasoning: reasonings[verdict],
-    bull_case: bullCases[Math.floor(Math.random() * bullCases.length)],
-    bear_case: bearCases[Math.floor(Math.random() * bearCases.length)],
-    edge: edges[Math.floor(Math.random() * edges.length)],
+    bullets: bulletSets[verdict] || bulletSets["WATCH"],
     risk_level,
   };
 }

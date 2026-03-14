@@ -179,10 +179,11 @@ export default function SwipeScreen() {
             const fallbackAnalysis: MarketAnalysis = {
                 verdict: "LEAN BUY",
                 confidence: 50,
-                reasoning: "Analysis was not available at time of swipe.",
-                bull_case: "Market shows potential based on current pricing.",
-                bear_case: "Insufficient data for full risk assessment.",
-                edge: "No edge analysis available.",
+                bullets: [
+                    "Analysis was not available at time of swipe",
+                    "Market shows potential based on current pricing",
+                    "Insufficient data for full risk assessment",
+                ],
                 risk_level: "medium",
             };
 

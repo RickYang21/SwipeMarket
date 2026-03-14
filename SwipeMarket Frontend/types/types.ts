@@ -33,12 +33,9 @@ export interface CryptoMarket extends Market {
 }
 
 export interface MarketAnalysis {
-  verdict: "STRONG BUY" | "BUY" | "LEAN BUY" | "SKIP";
+  verdict: "STRONG BUY" | "LEAN BUY" | "WATCH" | "LEAN SELL" | "STRONG SELL";
   confidence: number;
-  reasoning: string;
-  bull_case: string;
-  bear_case: string;
-  edge: string;
+  bullets: string[];
   risk_level: "low" | "medium" | "high";
 }
 

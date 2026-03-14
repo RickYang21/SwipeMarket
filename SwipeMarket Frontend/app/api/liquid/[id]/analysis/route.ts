@@ -1,10 +1,103 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { MarketAnalysis } from "@/lib/types";
+import { MarketAnalysis } from "@/types/types";
 import { CryptoMarket } from "@/lib/liquid";
 
 const analysisCache = new Map<string, { data: MarketAnalysis; timestamp: number }>();
 const CACHE_TTL = 2 * 60_000; // 2 minutes for crypto
+
+const SYSTEM_PROMPT = `You are a prediction market analyst. You will be given a market question, its current YES/NO pricing, and relevant context (category, event date, teams/entities involved).
+
+Your job:
+1. Research the actual facts, stats, and recent data relevant to this market.
+2. Produce 3 to 5 concise bullet points that give the user a real informational edge.
+3. After the bullet points, output a RECOMMENDATION line and a RISK line.
+
+STRICT FORMATTING RULES:
+- Each bullet point must be MAX 2 lines long. Be ruthless about brevity.
+- Wrap key names, numbers, stats, percentages, and critical phrases in **bold** using double asterisks.
+- Start each bullet with a dot separator: •
+- Never use em dashes. Use commas or periods to break up ideas.
+- Write in plain, direct language. No filler words. No hedging phrases like "it's worth noting" or "it should be considered."
+- Never say "historically strong" or "has been dominant" without backing it with a specific stat or number.
+- Every bullet must contain at least one concrete data point (a number, a date, a name, a record, a percentage).
+
+CONTENT RULES:
+- Focus on facts that directly move the needle on YES or NO. Cut anything generic.
+- If the market is about crypto, pull from recent news developments, on-chain metrics, or official statements.
+- Do NOT fabricate stats. If you lack specific data, say what the general trend is with whatever specifics you do have.
+
+RECOMMENDATION LINE:
+After the bullets, output one of these labels based on your analysis:
+- STRONG BUY (high confidence YES is underpriced)
+- LEAN BUY (moderate confidence YES is underpriced)
+- WATCH (too close to call or insufficient edge)
+- LEAN SELL (moderate confidence NO is underpriced)
+- STRONG SELL (high confidence NO is underpriced)
+
+RISK LINE:
+Output one of: Low Risk | Med Risk | High Risk
+Based on how much uncertainty or volatility remains before resolution.
+
+CONFIDENCE SCORE:
+Output a percentage from 0-100 representing your confidence in the recommendation.
+
+OUTPUT FORMAT (return ONLY this, no extra commentary):
+
+• [bullet 1]
+• [bullet 2]
+• [bullet 3]
+• [bullet 4 if needed]
+• [bullet 5 if needed]
+
+RECOMMENDATION: [label]
+RISK: [level]
+CONFIDENCE: [number]%`;
+
+function parseAnalysisResponse(text: string): MarketAnalysis {
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+
+  const bullets = lines
+    .filter((l) => l.startsWith("•"))
+    .map((l) => l.replace(/^•\s*/, "").trim())
+    .slice(0, 5);
+
+  const recLine = lines.find((l) => l.toUpperCase().startsWith("RECOMMENDATION:"));
+  const recLabel = recLine
+    ? recLine.replace(/^RECOMMENDATION:\s*/i, "").trim().toUpperCase()
+    : "WATCH";
+
+  const verdictMap: Record<string, MarketAnalysis["verdict"]> = {
+    "STRONG BUY": "STRONG BUY",
+    "LEAN BUY": "LEAN BUY",
+    "WATCH": "WATCH",
+    "LEAN SELL": "LEAN SELL",
+    "STRONG SELL": "STRONG SELL",
+  };
+  const verdict = verdictMap[recLabel] || "WATCH";
+
+  const riskLine = lines.find((l) => l.toUpperCase().startsWith("RISK:"));
+  const riskLabel = riskLine
+    ? riskLine.replace(/^RISK:\s*/i, "").trim().toLowerCase()
+    : "medium";
+
+  const riskMap: Record<string, MarketAnalysis["risk_level"]> = {
+    "low risk": "low",
+    "low": "low",
+    "med risk": "medium",
+    "medium risk": "medium",
+    "medium": "medium",
+    "high risk": "high",
+    "high": "high",
+  };
+  const risk_level = riskMap[riskLabel] || "medium";
+
+  const confLine = lines.find((l) => l.toUpperCase().startsWith("CONFIDENCE:"));
+  const confMatch = confLine?.match(/(\d+)/);
+  const confidence = confMatch ? Math.min(100, Math.max(0, parseInt(confMatch[1]))) : 60;
+
+  return { verdict, confidence, bullets, risk_level };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,33 +149,12 @@ export async function POST(request: NextRequest) {
     const response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 800,
-      system: `You are an elite crypto analyst on a mobile trading app. You combine price action data with real-world research to give clear, actionable signals.
-
-Your analysis must be scannable — users swipe through fast.
-
-FORMATTING RULES:
-- Use bullet points (start each line with •) for reasoning, bull_case, and bear_case
-- Bold **key terms** that help users scan (coin names, percentages, price levels, key facts)
-- Keep each bullet to ONE short sentence
-- Be specific — cite real numbers and events, not generic statements
-
-Respond ONLY in this exact JSON format:
-{
-  "verdict": "STRONG BUY" | "BUY" | "LEAN BUY" | "SKIP",
-  "confidence": <number 0-100>,
-  "reasoning": "<3-4 bullet points starting with •, separated by \\n, with **bold** key terms>",
-  "bull_case": "<1-2 bullet points starting with •>",
-  "bear_case": "<1-2 bullet points starting with •>",
-  "edge": "<1 sentence about where the opportunity is, **bold** the key insight>",
-  "risk_level": "low" | "medium" | "high"
-}`,
+      system: SYSTEM_PROMPT,
       messages: [
         {
           role: "user",
-          content: `Analyze this crypto pair:
-
-Pair: ${market.currency_pair_code}
-Base currency: ${market.base_currency}
+          content: `Market: "${market.base_currency} — ${market.currency_pair_code}"
+Category: crypto
 Current price: $${market.current_price}
 24h ago price: $${market.price_24h_ago}
 24h change: ${market.price_change_pct >= 0 ? "+" : ""}${market.price_change_pct.toFixed(2)}%
@@ -93,18 +165,13 @@ Spread: $${market.spread.toFixed(4)}
 
 ${research}
 
-Give your trading analysis in the required JSON format. Reference specific facts from the research where relevant.`,
+Analyze this crypto pair. Give me data-backed bullet points with bolded key info.`,
         },
       ],
     });
 
     const text = response.content[0].type === "text" ? response.content[0].text : "";
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("No JSON in response");
-    }
-
-    const analysis: MarketAnalysis = JSON.parse(jsonMatch[0]);
+    const analysis = parseAnalysisResponse(text);
     analysisCache.set(market.id, { data: analysis, timestamp: Date.now() });
 
     return NextResponse.json({ analysis });
@@ -122,12 +189,13 @@ Give your trading analysis in the required JSON format. Reference specific facts
     }
 
     const fallback: MarketAnalysis = {
-      verdict: "LEAN BUY",
+      verdict: "WATCH",
       confidence: 55,
-      reasoning: "• Crypto momentum looks **moderate** right now\n• Volume suggests **decent activity** but watch for reversal signals\n• Price action is **inconclusive** — wait for confirmation",
-      bull_case: "• Current momentum could **continue** if volume holds",
-      bear_case: "• Crypto can **reverse quickly** — extended moves often pull back",
-      edge: "Price-action suggests the market hasn't fully priced in **recent momentum**",
+      bullets: [
+        "Crypto momentum looks **moderate** right now",
+        "Volume suggests **decent activity** but watch for reversal signals",
+        "Price action is **inconclusive**, wait for confirmation",
+      ],
       risk_level: "medium",
     };
     return NextResponse.json({ analysis: fallback });
@@ -153,7 +221,7 @@ function generateMockCryptoAnalysis(market: CryptoMarket): MarketAnalysis {
     confidence = 75 + Math.floor(Math.random() * 12);
     risk_level = "medium";
   } else if (isNearLow && isStrongVolume) {
-    verdict = "BUY";
+    verdict = "LEAN BUY";
     confidence = 65 + Math.floor(Math.random() * 12);
     risk_level = "medium";
   } else if (isBullish && !isNearHigh) {
@@ -161,11 +229,11 @@ function generateMockCryptoAnalysis(market: CryptoMarket): MarketAnalysis {
     confidence = 58 + Math.floor(Math.random() * 12);
     risk_level = "medium";
   } else if (isNearHigh) {
-    verdict = "SKIP";
+    verdict = "LEAN SELL";
     confidence = 60 + Math.floor(Math.random() * 15);
     risk_level = "high";
   } else {
-    verdict = Math.random() > 0.4 ? "BUY" : "LEAN BUY";
+    verdict = Math.random() > 0.4 ? "LEAN BUY" : "WATCH";
     confidence = 55 + Math.floor(Math.random() * 15);
     risk_level = "medium";
   }
@@ -173,27 +241,40 @@ function generateMockCryptoAnalysis(market: CryptoMarket): MarketAnalysis {
   const base = market.base_currency;
   const dir = pctChange >= 0 ? "up" : "down";
   const pct = `${Math.abs(pctChange).toFixed(1)}%`;
+  const volStr = `$${(market.volume / 1_000_000).toFixed(1)}M`;
 
-  const reasonings: Record<string, string> = {
-    "STRONG BUY": `• **${base}** is ${dir} **${pct}** and trading near the **24h low** — classic dip-buy\n• Volume is strong at **$${(market.volume / 1_000_000).toFixed(1)}M**, confirming real buyer interest\n• Spread is **tight enough** for a clean entry and exit`,
-    "BUY": `• **${base}** shows solid momentum, ${dir} **${pct}** with healthy volume\n• Price sits in a **favorable range** — not overextended but showing conviction\n• Good **risk/reward** setup for a swing position`,
-    "LEAN BUY": `• **${base}** is ${dir} **${pct}** with moderate signals\n• Opportunity exists but the setup **isn't perfect** — size accordingly\n• Watch the **24h range boundaries** for confirmation`,
-    "SKIP": `• **${base}** is near the **24h high** after a **${pct}** move — too extended\n• **Pullback risk** outweighs remaining upside at this level\n• Better to **wait for a dip** or look at other pairs`,
+  const bulletSets: Record<string, string[]> = {
+    "STRONG BUY": [
+      `**${base}** is ${dir} **${pct}** and trading near the **24h low**, classic dip-buy setup`,
+      `Volume is strong at **${volStr}**, confirming real buyer interest`,
+      `Spread is **$${market.spread.toFixed(2)}**, tight enough for a clean entry and exit`,
+    ],
+    "LEAN BUY": [
+      `**${base}** shows solid momentum, ${dir} **${pct}** with healthy volume of **${volStr}**`,
+      `Price sits in a **favorable range**, not overextended but showing conviction`,
+      `Good **risk/reward** setup for a swing position at current levels`,
+    ],
+    "WATCH": [
+      `**${base}** is ${dir} **${pct}** with moderate signals, no clear edge yet`,
+      `Volume at **${volStr}** is decent but the setup **isn't perfect**`,
+      `Watch the **24h range boundaries** for a breakout or rejection`,
+    ],
+    "LEAN SELL": [
+      `**${base}** is near the **24h high** after a **${pct}** move, too extended`,
+      `**Pullback risk** outweighs remaining upside at this level`,
+      `Better to **wait for a dip** or look at other pairs`,
+    ],
+    "STRONG SELL": [
+      `**${base}** is severely overextended after **${pct}** move, reversal likely`,
+      `Volume is fading at **${volStr}**, suggesting exhaustion`,
+      `Risk of **5-10% correction** from current levels is elevated`,
+    ],
   };
 
   return {
     verdict,
     confidence,
-    reasoning: reasonings[verdict],
-    bull_case: pctChange >= 0
-      ? `• Bullish momentum of **+${pct}** could continue with volume support`
-      : `• **Oversold** bounce potential — ${base} has room to recover from **${pct}** dip`,
-    bear_case: isNearHigh
-      ? `• Extended near **24h high** — profit-taking could trigger a sharp pullback`
-      : `• Crypto volatility means any position can **reverse 5-10%** without warning`,
-    edge: isNearLow
-      ? `Price near **24h low** creates favorable risk/reward — limited downside with **significant upside**`
-      : `Spread of **$${market.spread.toFixed(2)}** suggests decent liquidity for clean execution`,
+    bullets: bulletSets[verdict] || bulletSets["WATCH"],
     risk_level,
   };
 }

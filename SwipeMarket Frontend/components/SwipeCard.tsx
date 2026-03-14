@@ -73,14 +73,16 @@ function getVerdictClass(verdict: string): string {
     switch (verdict) {
         case "STRONG BUY":
             return "verdict-strong-buy";
-        case "BUY":
-            return "verdict-buy";
         case "LEAN BUY":
             return "verdict-lean-buy";
-        case "SKIP":
+        case "WATCH":
+            return "verdict-skip";
+        case "LEAN SELL":
+            return "verdict-skip";
+        case "STRONG SELL":
             return "verdict-skip";
         default:
-            return "verdict-buy";
+            return "verdict-lean-buy";
     }
 }
 
@@ -137,22 +139,27 @@ function RichText({ text, className }: { text: string; className?: string }) {
 }
 
 /**
- * A single row: colored label + rich text body.
+ * A single bullet row with a subtle dot accent and rich text body.
  */
-function InsightRow({ label, color, text }: { label: string; color: string; text: string }) {
+function BulletRow({ text }: { text: string }) {
     if (!text) return null;
 
-    // Truncate to ~120 chars for scannability
-    const truncated = text.length > 120 ? text.slice(0, 117) + "..." : text;
+    // Truncate to ~140 chars, but clean up any broken bold markers
+    let truncated = text.length > 140 ? text.slice(0, 137) : text;
+    if (text.length > 140) {
+        // Strip any unclosed ** at the end
+        const openCount = (truncated.match(/\*\*/g) || []).length;
+        if (openCount % 2 !== 0) {
+            // Odd number of ** means one is unclosed — remove the last one
+            const lastIdx = truncated.lastIndexOf("**");
+            truncated = truncated.slice(0, lastIdx).trimEnd();
+        }
+        truncated += "...";
+    }
 
     return (
         <div className="flex items-start gap-2">
-            <span
-                className="text-[10px] font-bold uppercase tracking-wider shrink-0 mt-[2px] w-7"
-                style={{ color }}
-            >
-                {label}
-            </span>
+            <span className="text-accent-gold/60 text-[8px] mt-[5px] shrink-0">&#9679;</span>
             <RichText
                 text={truncated}
                 className="text-[12px] text-secondary/70 leading-snug"
@@ -481,11 +488,11 @@ export default function SwipeCard({ data, onSwipe, isTop, index = 0 }: SwipeCard
                                 <MiniSparkline data={market.price_history} />
                             )}
 
-                            {/* Bull / Bear / Edge stacked insights */}
+                            {/* Bullet point insights */}
                             <div className="space-y-1.5 mb-2.5">
-                                <InsightRow label="Bull" color="#10B981" text={analysis.bull_case} />
-                                <InsightRow label="Bear" color="#EF4444" text={analysis.bear_case} />
-                                <InsightRow label="Edge" color="#F59E0B" text={analysis.edge} />
+                                {analysis.bullets.slice(0, 5).map((bullet, i) => (
+                                    <BulletRow key={i} text={bullet} />
+                                ))}
                             </div>
 
                             {/* Risk Level */}

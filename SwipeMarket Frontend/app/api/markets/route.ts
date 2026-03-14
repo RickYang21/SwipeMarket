@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CATEGORY_KEYWORDS } from "@/lib/categories";
-import { Market } from "@/lib/types";
+import { Market } from "@/types/types";
 
 let cache: { data: Market[]; timestamp: number } | null = null;
 const CACHE_TTL = 60_000; // 60 seconds
