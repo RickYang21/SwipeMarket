@@ -339,208 +339,232 @@ export default function SwipeCard({ data, onSwipe, isTop, index = 0 }: SwipeCard
                     WATCHLIST
                 </motion.div>
 
-                <div className="phone-content overflow-y-auto flex-1 p-4 pt-3">
-                    {/* Top badges */}
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="px-3 py-1 rounded-lg card-elevated-sm text-[11px] font-medium text-secondary/80 tracking-wide">
+                <div className="phone-content overflow-y-auto flex-1 flex flex-col relative w-full h-full">
+                    {/* Hero Image Section */}
+                    {market.image ? (
+                        <div className="relative w-full h-36 shrink-0 mt-[-1px] rounded-t-2xl overflow-hidden">
+                            {/* The actual image */}
+                            <img
+                                src={market.image}
+                                alt=""
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    // Fallback if image fails to load
+                                    e.currentTarget.style.display = 'none';
+                                    e.currentTarget.parentElement?.classList.add('bg-gradient-to-b', 'from-white/[0.05]', 'to-transparent');
+                                }}
+                            />
+                            {/* Seamless dark gradient overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-[#1C1C1E]/60 to-[#1C1C1E]" />
+                        </div>
+                    ) : (
+                        /* Fallback header space if no image */
+                        <div className="relative w-full h-12 shrink-0 bg-gradient-to-b from-white/[0.05] to-transparent rounded-t-2xl" />
+                    )}
+
+                    {/* Floating top badges */}
+                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
+                        <span className="px-2.5 py-0.5 rounded-lg bg-black/40 backdrop-blur-md border border-white/10 text-[10px] font-medium text-white/90 tracking-wide">
                             {market.category}
                         </span>
                         {daysLeft !== null && (
-                            <span className="px-3 py-1 rounded-lg card-elevated-sm text-[11px] font-medium text-secondary/80 tracking-wide">
+                            <span className="px-2.5 py-0.5 rounded-lg bg-black/40 backdrop-blur-md border border-white/10 text-[10px] font-medium text-white/90 tracking-wide">
                                 {market.end_date === "Ongoing" ? "Ongoing" : `${daysLeft}d left`}
                             </span>
                         )}
                     </div>
 
-                    {/* Question / Asset Name */}
-                    <h2 className="text-[18px] font-bold text-primary leading-snug mb-4 line-clamp-3 tracking-tight">
-                        {market.question}
-                    </h2>
+                    <div className="flex-1 px-4 pb-4 -mt-6 z-10 relative flex flex-col justify-end">
+                        {/* Question / Asset Name */}
+                        <h2 className="text-[17px] font-bold text-primary leading-snug mb-3 line-clamp-3 tracking-tight drop-shadow-md">
+                            {market.question}
+                        </h2>
 
-                    {/* Odds or Price Bar */}
-                    {isCrypto && cryptoMarket ? (
-                        <div className="mb-5">
-                            <div className="flex justify-between items-end mb-1">
-                                <div>
-                                    <span className="text-[28px] font-bold text-primary tracking-tight tabular-nums relative top-1">
-                                        ${cryptoMarket.current_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
-                                    </span>
-                                    <span className={`ml-2 text-[13px] font-semibold tracking-wide ${cryptoMarket.price_change_pct >= 0 ? "text-accent-green" : "text-accent-red"}`}>
-                                        {cryptoMarket.price_change_pct >= 0 ? "+" : ""}{cryptoMarket.price_change_pct.toFixed(2)}%
-                                    </span>
-                                </div>
-                            </div>
-
-                            {cryptoMarket.price_history && cryptoMarket.price_history.length > 0 && (
-                                <Sparkline
-                                    data={cryptoMarket.price_history}
-                                    color={cryptoMarket.price_change_pct >= 0 ? "#10B981" : "#EF4444"}
-                                />
-                            )}
-
-                            <div className="flex justify-between text-[10px] text-secondary/60 mb-1 tracking-wide font-medium">
-                                <span>24h Low: ${cryptoMarket.low_24h.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                                <span>24h High: ${cryptoMarket.high_24h.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                            </div>
-                            <div className="h-1.5 bg-white/[0.04] rounded-full overflow-hidden relative">
-                                {(() => {
-                                    const range = cryptoMarket.high_24h - cryptoMarket.low_24h || 1;
-                                    const pos = ((cryptoMarket.current_price - cryptoMarket.low_24h) / range) * 100;
-                                    return (
-                                        <div
-                                            className="absolute top-0 bottom-0 bg-white/20 rounded-full"
-                                            style={{ left: 0, right: `${Math.max(0, 100 - pos)}%` }}
-                                        />
-                                    );
-                                })()}
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="mb-5">
-                            <div className="flex justify-between text-[11px] mb-2">
-                                <span className="text-accent-green font-semibold tracking-wide">
-                                    YES {Math.max(1, Math.round(market.yes_price * 100))}%
-                                </span>
-                                <span className="text-accent-red/80 font-semibold tracking-wide">
-                                    NO {Math.max(1, Math.round(market.no_price * 100))}%
-                                </span>
-                            </div>
-                            <div className="odds-bar">
-                                <div
-                                    className="odds-bar-yes"
-                                    style={{ width: `${market.yes_price * 100}%` }}
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Stats */}
-                    <div className="grid grid-cols-3 gap-2 mb-4">
-                        {[
-                            { label: "Volume", value: formatVolume(market.volume) },
-                            { label: "Liquidity", value: formatVolume(market.liquidity) },
-                            { label: "24h Vol", value: formatVolume(market.volume_24h) },
-                        ].map((stat) => (
-                            <div key={stat.label} className="stat-card rounded-xl p-2.5 text-center">
-                                <p className="text-[9px] text-secondary/60 uppercase tracking-[0.1em] mb-0.5">
-                                    {stat.label}
-                                </p>
-                                <p className="text-[13px] font-semibold text-primary/90">
-                                    {stat.value}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* AI Analysis Box */}
-                    {analysis ? (
-                        <div className="ai-analysis-box rounded-2xl p-3.5">
-                            {/* Header: label + verdict */}
-                            <div className="flex items-center justify-between mb-2.5">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-accent-gold pulse-slow" />
-                                    <span className="text-accent-gold text-[10px] font-bold tracking-[0.15em] uppercase">
-                                        AI Analysis
-                                    </span>
-                                </div>
-                                <span
-                                    className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold ${getVerdictClass(
-                                        analysis.verdict
-                                    )}`}
-                                >
-                                    {analysis.verdict}
-                                </span>
-                            </div>
-
-                            {/* Confidence bar */}
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="flex-1 h-1 bg-white/[0.06] rounded-full overflow-hidden">
-                                    <motion.div
-                                        className="h-full rounded-full"
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${analysis.confidence}%` }}
-                                        transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                                        style={{
-                                            background: `linear-gradient(90deg, rgba(245, 158, 11, 0.5) 0%, #F59E0B 100%)`,
-                                        }}
-                                    />
-                                </div>
-                                <span className="text-[10px] font-bold text-accent-gold/90 tabular-nums">
-                                    {analysis.confidence}%
-                                </span>
-                            </div>
-
-                            {/* Mini Momentum Sparkline */}
-                            {market.price_history && market.price_history.length >= 2 && !isCrypto && (
-                                <MiniSparkline data={market.price_history} />
-                            )}
-
-                            {/* Bullet point insights */}
-                            <div className="space-y-1.5 mb-2.5">
-                                {analysis.bullets.slice(0, 5).map((bullet, i) => (
-                                    <BulletRow key={i} text={bullet} />
-                                ))}
-                            </div>
-
-                            {/* Risk Level */}
-                            <div className="flex items-center justify-between pt-2 border-t border-white/[0.04]">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[9px] text-secondary/50 uppercase tracking-[0.1em]">
-                                        Risk
-                                    </span>
-                                    <span
-                                        className={`text-[10px] font-semibold uppercase tracking-wide ${getRiskColor(
-                                            analysis.risk_level
-                                        )}`}
-                                    >
-                                        {analysis.risk_level}
-                                    </span>
-                                </div>
-                                {getRiskDots(analysis.risk_level)}
-                            </div>
-                        </div>
-                    ) : (
-                        /* Loading skeleton for analysis */
-                        <div className="ai-analysis-box rounded-2xl p-3.5 overflow-hidden relative">
-                            {/* Shimmer overlay */}
-                            <div className="absolute inset-0 z-0">
-                                <div className="w-full h-full bg-gradient-to-r from-transparent via-white/[0.03] to-transparent shimmer-effect" />
-                            </div>
-
-                            <div className="relative z-10">
-                                <div className="flex items-center justify-between mb-2.5">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-accent-gold/40 animate-pulse" />
-                                        <span className="text-accent-gold/40 text-[10px] font-bold tracking-[0.15em] uppercase">
-                                            Analyzing...
+                        {/* Odds or Price Bar */}
+                        {isCrypto && cryptoMarket ? (
+                            <div className="mb-5">
+                                <div className="flex justify-between items-end mb-1">
+                                    <div>
+                                        <span className="text-[28px] font-bold text-primary tracking-tight tabular-nums relative top-1">
+                                            ${cryptoMarket.current_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+                                        </span>
+                                        <span className={`ml-2 text-[13px] font-semibold tracking-wide ${cryptoMarket.price_change_pct >= 0 ? "text-accent-green" : "text-accent-red"}`}>
+                                            {cryptoMarket.price_change_pct >= 0 ? "+" : ""}{cryptoMarket.price_change_pct.toFixed(2)}%
                                         </span>
                                     </div>
-                                    <div className="w-16 h-5 bg-white/[0.03] rounded-lg" />
                                 </div>
-                                <div className="flex items-center gap-3 mb-2">
-                                    <div className="flex-1 h-1 bg-white/[0.03] rounded-full" />
-                                    <div className="w-8 h-3 bg-white/[0.03] rounded" />
+
+                                {cryptoMarket.price_history && cryptoMarket.price_history.length > 0 && (
+                                    <Sparkline
+                                        data={cryptoMarket.price_history}
+                                        color={cryptoMarket.price_change_pct >= 0 ? "#10B981" : "#EF4444"}
+                                    />
+                                )}
+
+                                <div className="flex justify-between text-[10px] text-secondary/60 mb-1 tracking-wide font-medium">
+                                    <span>24h Low: ${cryptoMarket.low_24h.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                                    <span>24h High: ${cryptoMarket.high_24h.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                                 </div>
-                                <div className="space-y-2 mb-2.5">
-                                    <div className="flex items-start gap-2">
-                                        <div className="w-7 h-3 bg-white/[0.03] rounded mt-0.5 shrink-0" />
-                                        <div className="h-3 bg-white/[0.03] rounded w-full" />
-                                    </div>
-                                    <div className="flex items-start gap-2">
-                                        <div className="w-7 h-3 bg-white/[0.03] rounded mt-0.5 shrink-0" />
-                                        <div className="h-3 bg-white/[0.03] rounded w-5/6" />
-                                    </div>
-                                    <div className="flex items-start gap-2">
-                                        <div className="w-7 h-3 bg-white/[0.03] rounded mt-0.5 shrink-0" />
-                                        <div className="h-3 bg-white/[0.03] rounded w-4/6" />
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 pt-2 border-t border-white/[0.03]">
-                                    <div className="w-12 h-2.5 bg-white/[0.03] rounded" />
+                                <div className="h-1.5 bg-white/[0.04] rounded-full overflow-hidden relative">
+                                    {(() => {
+                                        const range = cryptoMarket.high_24h - cryptoMarket.low_24h || 1;
+                                        const pos = ((cryptoMarket.current_price - cryptoMarket.low_24h) / range) * 100;
+                                        return (
+                                            <div
+                                                className="absolute top-0 bottom-0 bg-white/20 rounded-full"
+                                                style={{ left: 0, right: `${Math.max(0, 100 - pos)}%` }}
+                                            />
+                                        );
+                                    })()}
                                 </div>
                             </div>
+                        ) : (
+                            <div className="mb-4">
+                                <div className="flex justify-between text-[11px] mb-1.5">
+                                    <span className="text-accent-green font-semibold tracking-wide">
+                                        YES {Math.max(1, Math.round(market.yes_price * 100))}%
+                                    </span>
+                                    <span className="text-accent-red/80 font-semibold tracking-wide">
+                                        NO {Math.max(1, Math.round(market.no_price * 100))}%
+                                    </span>
+                                </div>
+                                <div className="odds-bar">
+                                    <div
+                                        className="odds-bar-yes"
+                                        style={{ width: `${market.yes_price * 100}%` }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Stats */}
+                        <div className="grid grid-cols-3 gap-2 mb-3">
+                            {[
+                                { label: "Volume", value: formatVolume(market.volume) },
+                                { label: "Liquidity", value: formatVolume(market.liquidity) },
+                                { label: "24h Vol", value: formatVolume(market.volume_24h) },
+                            ].map((stat) => (
+                                <div key={stat.label} className="stat-card rounded-xl p-2 text-center">
+                                    <p className="text-[9px] text-secondary/60 uppercase tracking-[0.1em] mb-0.5">
+                                        {stat.label}
+                                    </p>
+                                    <p className="text-[12px] font-semibold text-primary/90">
+                                        {stat.value}
+                                    </p>
+                                </div>
+                            ))}
                         </div>
-                    )}
+
+                        {/* AI Analysis Box */}
+                        {analysis ? (
+                            <div className="ai-analysis-box rounded-2xl p-3 shrink-0">
+                                {/* Header: label + verdict */}
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-accent-gold pulse-slow" />
+                                        <span className="text-accent-gold text-[10px] font-bold tracking-[0.15em] uppercase">
+                                            AI Analysis
+                                        </span>
+                                    </div>
+                                    <span
+                                        className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold ${getVerdictClass(
+                                            analysis.verdict
+                                        )}`}
+                                    >
+                                        {analysis.verdict}
+                                    </span>
+                                </div>
+
+                                {/* Confidence bar */}
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="flex-1 h-1 bg-white/[0.06] rounded-full overflow-hidden">
+                                        <motion.div
+                                            className="h-full rounded-full"
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${analysis.confidence}%` }}
+                                            transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                                            style={{
+                                                background: `linear-gradient(90deg, rgba(245, 158, 11, 0.5) 0%, #F59E0B 100%)`,
+                                            }}
+                                        />
+                                    </div>
+                                    <span className="text-[10px] font-bold text-accent-gold/90 tabular-nums">
+                                        {analysis.confidence}%
+                                    </span>
+                                </div>
+
+                                {/* Mini Momentum Sparkline */}
+                                {market.price_history && market.price_history.length >= 2 && !isCrypto && (
+                                    <div className="mb-2"><MiniSparkline data={market.price_history} /></div>
+                                )}
+
+                                {/* Bullet point insights */}
+                                <div className="space-y-1 mb-2">
+                                    {analysis.bullets.slice(0, 5).map((bullet, i) => (
+                                        <BulletRow key={i} text={bullet} />
+                                    ))}
+                                </div>
+
+                                {/* Risk Level */}
+                                <div className="flex items-center justify-between pt-1.5 border-t border-white/[0.04]">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[9px] text-secondary/50 uppercase tracking-[0.1em]">
+                                            Risk
+                                        </span>
+                                        <span
+                                            className={`text-[10px] font-semibold uppercase tracking-wide ${getRiskColor(
+                                                analysis.risk_level
+                                            )}`}
+                                        >
+                                            {analysis.risk_level}
+                                        </span>
+                                    </div>
+                                    {getRiskDots(analysis.risk_level)}
+                                </div>
+                            </div>
+                        ) : (
+                            /* Loading skeleton for analysis */
+                            <div className="ai-analysis-box rounded-2xl p-3 shrink-0 overflow-hidden relative mt-2">
+                                {/* Shimmer overlay */}
+                                <div className="absolute inset-0 z-0">
+                                    <div className="w-full h-full bg-gradient-to-r from-transparent via-white/[0.03] to-transparent shimmer-effect" />
+                                </div>
+
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-accent-gold/40 animate-pulse" />
+                                            <span className="text-accent-gold/40 text-[10px] font-bold tracking-[0.15em] uppercase">
+                                                Analyzing...
+                                            </span>
+                                        </div>
+                                        <div className="w-16 h-4 bg-white/[0.03] rounded-lg" />
+                                    </div>
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="flex-1 h-1 bg-white/[0.03] rounded-full" />
+                                        <div className="w-8 h-2 bg-white/[0.03] rounded" />
+                                    </div>
+                                    <div className="space-y-1.5 mb-2">
+                                        <div className="flex items-start gap-2">
+                                            <div className="w-6 h-2 bg-white/[0.03] rounded mt-0.5 shrink-0" />
+                                            <div className="h-2 bg-white/[0.03] rounded w-full" />
+                                        </div>
+                                        <div className="flex items-start gap-2">
+                                            <div className="w-6 h-2 bg-white/[0.03] rounded mt-0.5 shrink-0" />
+                                            <div className="h-2 bg-white/[0.03] rounded w-5/6" />
+                                        </div>
+                                        <div className="flex items-start gap-2">
+                                            <div className="w-6 h-2 bg-white/[0.03] rounded mt-0.5 shrink-0" />
+                                            <div className="h-2 bg-white/[0.03] rounded w-4/6" />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 pt-1.5 border-t border-white/[0.03]">
+                                        <div className="w-12 h-2.5 bg-white/[0.03] rounded" />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </motion.div>
