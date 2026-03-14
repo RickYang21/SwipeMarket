@@ -140,7 +140,7 @@ export default function SwipeCard({ market, analysis, onSwipe, isTop, index, sho
 
           {/* AI Recommendation */}
           {analysis ? (
-            <AIRecommendation analysis={analysis} />
+            <AIRecommendation analysis={analysis} marketYesPrice={market.yes_price} />
           ) : (
             <div className="bg-[#1A1A2E] rounded-xl p-3 space-y-2">
               <div className="h-6 w-24 bg-white/5 rounded-full animate-pulse" />

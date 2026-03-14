@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { MarketAnalysis, Market } from "@/lib/types";
+import { researchMarket, formatResearchForPrompt } from "@/lib/news-research";
 
 const analysisCache = new Map<string, { data: MarketAnalysis; timestamp: number }>();
 const CACHE_TTL = 5 * 60_000; // 5 minutes
@@ -18,47 +19,82 @@ export async function POST(request: NextRequest) {
     // Try to use Anthropic API
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      // Return smart mock analysis if no API key
       const analysis = generateMockAnalysis(market);
       analysisCache.set(market.id, { data: analysis, timestamp: Date.now() });
       return NextResponse.json({ analysis });
     }
 
+    // Step 1: Research — fetch real news about this market
+    const research = await researchMarket(
+      market.question,
+      market.description,
+      market.category
+    );
+
+    const researchText = formatResearchForPrompt(research);
+    const hasResearch = research.articles.length > 0;
+
+    // Step 2: Build the AI prompt with research context
     const client = new Anthropic({ apiKey });
 
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 500,
-      system: `You are an elite prediction market trader giving advice on a mobile app. Analyze the market data and give a clear BUY or SKIP verdict. Be direct and opinionated — users are swiping fast and need a quick signal. Explain WHY in 2-3 punchy sentences. Identify any edge where the market might be mispriced. Never hedge — commit to your call.
+    const systemPrompt = `You are SwipeMarket's AI Research Analyst — the smartest prediction market brain on the planet. You do what no other app does: you independently research each market by reading real news, then form your OWN probability estimate BEFORE looking at what the market thinks.
 
-Respond in this EXACT JSON format only, with no other text:
+Your job:
+1. Read the news articles provided and extract every relevant fact
+2. Form YOUR OWN probability estimate for the YES outcome (0-100%) — this must be YOUR independent assessment based on the evidence, NOT influenced by the market price
+3. Compare your estimate to the market price to find the edge
+4. Give a clear, opinionated verdict
+
+Rules:
+- Be specific — cite actual facts from the articles (e.g., "per ESPN, the starting QB is out with a knee injury")
+- Your reasoning should be 2-4 punchy sentences packed with real information
+- Never be generic. Users came here for YOUR research edge, not "market sentiment" platitudes
+- If the news contradicts the market price, call it out aggressively
+- If you find no useful news, say so honestly and analyze based on what you know
+
+Respond in EXACTLY this JSON format, nothing else:
 {
   "verdict": "STRONG BUY" | "BUY" | "LEAN BUY" | "SKIP",
   "confidence": <number 0-100>,
-  "reasoning": "<2-3 sentences>",
+  "ai_probability": <number 0-100, YOUR independent YES probability>,
+  "reasoning": "<2-4 sentences citing specific facts from the research>",
   "bull_case": "<1 sentence>",
-  "bear_case": "<1 sentence>",
-  "edge": "<1 sentence about potential mispricing>",
-  "risk_level": "low" | "medium" | "high"
-}`,
-      messages: [
-        {
-          role: "user",
-          content: `Analyze this prediction market:
+  "bear_case": "<1 sentence>", 
+  "edge": "<1 sentence comparing your probability to the market's>",
+  "risk_level": "low" | "medium" | "high",
+  "sources_used": [<indices of articles you actually cited, e.g. [1, 3, 5]>]
+}`;
 
+    const userMessage = `Analyze this prediction market using the research below.
+
+═══ MARKET DATA ═══
 Question: ${market.question}
 Description: ${market.description}
-Current YES price: ${market.yes_price} (${Math.round(market.yes_price * 100)}% implied probability)
-Current NO price: ${market.no_price} (${Math.round(market.no_price * 100)}% implied probability)
+Category: ${market.category}
+End date: ${market.end_date}
+
+Current YES price: $${market.yes_price.toFixed(2)} (${Math.round(market.yes_price * 100)}% implied probability)
+Current NO price: $${market.no_price.toFixed(2)} (${Math.round(market.no_price * 100)}% implied probability)
 Total volume: $${market.volume.toLocaleString()}
 24h volume: $${market.volume_24h.toLocaleString()}
 Liquidity: $${market.liquidity.toLocaleString()}
-End date: ${market.end_date}
-Category: ${market.category}
 
-Give your trading analysis in the required JSON format.`,
-        },
-      ],
+═══ NEWS RESEARCH ═══
+${researchText}
+
+═══ INSTRUCTIONS ═══
+${hasResearch
+  ? "Use the research above to form YOUR OWN probability estimate. Cite specific facts from the articles in your reasoning. Then compare your estimate to the market price to find any edge."
+  : "No news research was available. Analyze based on the market data, your knowledge, and the question itself. Be honest that research was limited."
+}
+
+Give your analysis in the required JSON format.`;
+
+    const response = await client.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 800,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userMessage }],
     });
 
     const text = response.content[0].type === "text" ? response.content[0].text : "";
@@ -67,7 +103,31 @@ Give your trading analysis in the required JSON format.`,
       throw new Error("No JSON in response");
     }
 
-    const analysis: MarketAnalysis = JSON.parse(jsonMatch[0]);
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    // Map sources_used indices back to actual article references
+    const sources: { title: string; url: string }[] = [];
+    if (parsed.sources_used && research.articles.length > 0) {
+      for (const idx of parsed.sources_used) {
+        const article = research.articles[idx - 1]; // 1-indexed
+        if (article) {
+          sources.push({ title: article.title, url: article.url });
+        }
+      }
+    }
+
+    const analysis: MarketAnalysis = {
+      verdict: parsed.verdict,
+      confidence: parsed.confidence,
+      reasoning: parsed.reasoning,
+      bull_case: parsed.bull_case,
+      bear_case: parsed.bear_case,
+      edge: parsed.edge,
+      risk_level: parsed.risk_level,
+      ai_probability: parsed.ai_probability,
+      sources,
+    };
+
     analysisCache.set(market.id, { data: analysis, timestamp: Date.now() });
 
     return NextResponse.json({ analysis });
@@ -102,7 +162,6 @@ function generateMockAnalysis(market: Market): MarketAnalysis {
   const yesPrice = market.yes_price;
   const volume = market.volume;
 
-  // Generate contextually relevant analysis based on market data
   const isHighVolume = volume > 1_000_000;
   const isCloseOdds = Math.abs(yesPrice - 0.5) < 0.15;
   const isLongShot = yesPrice < 0.25;
@@ -111,28 +170,37 @@ function generateMockAnalysis(market: Market): MarketAnalysis {
   let verdict: MarketAnalysis["verdict"];
   let confidence: number;
   let risk_level: MarketAnalysis["risk_level"];
+  let ai_probability: number;
 
   if (isCloseOdds && isHighVolume) {
     verdict = "STRONG BUY";
     confidence = 72 + Math.floor(Math.random() * 15);
     risk_level = "medium";
+    ai_probability = Math.round(yesPrice * 100) + Math.floor(Math.random() * 10) - 5;
   } else if (isCloseOdds) {
     verdict = "BUY";
     confidence = 62 + Math.floor(Math.random() * 15);
     risk_level = "medium";
+    ai_probability = Math.round(yesPrice * 100) + Math.floor(Math.random() * 15) - 7;
   } else if (isLongShot && isHighVolume) {
     verdict = "LEAN BUY";
     confidence = 55 + Math.floor(Math.random() * 15);
     risk_level = "high";
+    ai_probability = Math.round(yesPrice * 100) + Math.floor(Math.random() * 12);
   } else if (isFavorite) {
     verdict = "SKIP";
     confidence = 65 + Math.floor(Math.random() * 15);
     risk_level = "low";
+    ai_probability = Math.round(yesPrice * 100) - Math.floor(Math.random() * 10);
   } else {
     verdict = Math.random() > 0.4 ? "BUY" : "LEAN BUY";
     confidence = 58 + Math.floor(Math.random() * 20);
     risk_level = "medium";
+    ai_probability = Math.round(yesPrice * 100) + Math.floor(Math.random() * 16) - 8;
   }
+
+  // Clamp probability
+  ai_probability = Math.max(1, Math.min(99, ai_probability));
 
   const reasonings = {
     "STRONG BUY": `This market is tightly contested at ${Math.round(yesPrice * 100)}% YES with strong volume — exactly the kind of pricing inefficiency we look for. The high liquidity means you can enter and exit cleanly. Smart money hasn't fully moved yet.`,
@@ -170,5 +238,7 @@ function generateMockAnalysis(market: Market): MarketAnalysis {
     bear_case: bearCases[Math.floor(Math.random() * bearCases.length)],
     edge: edges[Math.floor(Math.random() * edges.length)],
     risk_level,
+    ai_probability,
+    sources: [],
   };
 }
