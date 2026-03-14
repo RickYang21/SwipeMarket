@@ -20,7 +20,8 @@ type AppAction =
     | { type: "ADD_FUNDS"; amount: number }
     | { type: "ADD_TRANSACTION"; transaction: Transaction }
     | { type: "SET_BET_AMOUNT"; amount: number }
-    | { type: "WITHDRAW_FUNDS"; amount: number };
+    | { type: "WITHDRAW_FUNDS"; amount: number }
+    | { type: "SELL_POSITION"; id: string; proceeds: number; sellPrice: number };
 
 const initialState: AppState = {
     balance: 100.0,
@@ -69,6 +70,26 @@ function appReducer(state: AppState, action: AppAction): AppState {
             };
         case "SET_BET_AMOUNT":
             return { ...state, betAmount: action.amount };
+        case "SELL_POSITION":
+            return {
+                ...state,
+                balance: state.balance + action.proceeds,
+                swipeHistory: state.swipeHistory.map((r) =>
+                    r.id === action.id
+                        ? { ...r, sold: true, sell_price: action.sellPrice, sell_timestamp: Date.now() }
+                        : r
+                ),
+                transactions: [
+                    {
+                        id: `t${Date.now()}`,
+                        type: "winnings",
+                        amount: action.proceeds,
+                        description: `Sold position`,
+                        timestamp: Date.now(),
+                    },
+                    ...state.transactions,
+                ],
+            };
         default:
             return state;
     }
