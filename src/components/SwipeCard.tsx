@@ -18,6 +18,25 @@ interface SwipeCardProps {
   showHint: boolean;
 }
 
+function formatEventDate(dateStr: string): string {
+  const eventDate = new Date(dateStr);
+  const now = new Date();
+
+  // Compare dates in local time
+  const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.round((eventDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const monthDay = `${months[eventDate.getMonth()]} ${eventDate.getDate()}`;
+
+  if (diffDays === 0) return `Today, ${monthDay}`;
+  if (diffDays === 1) return `Tomorrow, ${monthDay}`;
+  if (diffDays > 1 && diffDays <= 6) return `${days[eventDate.getDay()]}, ${monthDay}`;
+  return monthDay;
+}
+
 function timeUntil(dateStr: string): string {
   if (dateStr === "Ongoing") return "Ongoing";
   const diff = new Date(dateStr).getTime() - Date.now();
@@ -56,6 +75,9 @@ export default function SwipeCard({ market, analysis, onSwipe, isTop, index, sho
   const opacity = 1 - index * 0.15;
   const isCrypto = isCryptoMarket(market);
   const catConfig = CATEGORY_CONFIG[market.category];
+
+  const eventDateStr = isCrypto ? "" : formatEventDate(market.event_date);
+  const countdown = timeUntil(market.end_date);
 
   return (
     <motion.div
@@ -113,9 +135,9 @@ export default function SwipeCard({ market, analysis, onSwipe, isTop, index, sho
             {isCrypto && <span className="text-[8px] text-amber-400/60 ml-1">via Liquid</span>}
           </div>
 
-          {/* Time pill / Ongoing pill */}
+          {/* Date + countdown pill */}
           <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm text-[10px] font-medium text-[#9CA3AF]">
-            {timeUntil(market.end_date)}
+            {isCrypto ? countdown : `${eventDateStr} · ${countdown}`}
           </div>
         </div>
 
@@ -196,7 +218,7 @@ export default function SwipeCard({ market, analysis, onSwipe, isTop, index, sho
               </div>
             </>
           ) : (
-            // POLYMARKET CARD CONTENT (original)
+            // POLYMARKET CARD CONTENT
             <>
               <h3
                 className="text-[17px] font-bold text-white leading-tight line-clamp-3 -mt-1"
@@ -209,7 +231,7 @@ export default function SwipeCard({ market, analysis, onSwipe, isTop, index, sho
               <MarketStats volume={market.volume} liquidity={market.liquidity} volume24h={market.volume_24h} />
 
               {analysis ? (
-                <AIRecommendation analysis={analysis} />
+                <AIRecommendation analysis={analysis} marketYesPrice={market.yes_price} />
               ) : (
                 <div className="bg-[#1A1A2E] rounded-xl p-3 space-y-2">
                   <div className="h-6 w-24 bg-white/5 rounded-full animate-pulse" />

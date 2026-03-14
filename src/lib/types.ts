@@ -8,6 +8,7 @@ export interface Market {
   volume_24h: number;
   liquidity: number;
   end_date: string;
+  event_date: string;
   image: string;
   category: string;
   outcomes: string[];
@@ -27,6 +28,8 @@ export interface MarketAnalysis {
   bear_case: string;
   edge: string;
   risk_level: "low" | "medium" | "high";
+  ai_probability?: number; // AI's own independent estimate (0-100)
+  sources?: { title: string; url: string }[];
 }
 
 export interface SwipeRecord {

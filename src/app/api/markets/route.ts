@@ -30,6 +30,14 @@ function mapPolymarketData(raw: any, matchedCategory: string): Market {
   const yesPrice = parseFloat(outcomePrices[0] || "0.5");
   const noPrice = parseFloat(outcomePrices[1] || "0.5");
 
+  // Pick the best event date: gameStartTime > events[0].startTime > endDate
+  const eventDate =
+    raw.gameStartTime ||
+    (raw.events && raw.events[0] && (raw.events[0].startTime || raw.events[0].eventDate)) ||
+    raw.endDate ||
+    raw.endDateIso ||
+    new Date().toISOString();
+
   return {
     id: raw.id || raw.conditionId || String(Math.random()),
     question: raw.question || raw.title || "Unknown market",
@@ -40,6 +48,7 @@ function mapPolymarketData(raw: any, matchedCategory: string): Market {
     volume_24h: raw.volume24hr || 0,
     liquidity: raw.liquidityNum || parseFloat(raw.liquidity || "0"),
     end_date: raw.endDate || raw.endDateIso || new Date(Date.now() + 86400000 * 7).toISOString(),
+    event_date: eventDate,
     image: raw.image || raw.icon || "",
     category: matchedCategory,
     outcomes: raw.outcomes ? (typeof raw.outcomes === "string" ? JSON.parse(raw.outcomes) : raw.outcomes) : ["Yes", "No"],
@@ -144,6 +153,7 @@ function generateMockMarkets(): Market[] {
       description: "This market resolves to 'Yes' if the Los Angeles Lakers win the 2025-26 NBA Finals.",
       yes_price: 0.12, no_price: 0.88, volume: 2_450_000, volume_24h: 89_000,
       liquidity: 340_000, end_date: new Date(Date.now() + 86400000 * 90).toISOString(),
+      event_date: new Date(Date.now() + 86400000 * 90).toISOString(),
       image: "", category: "nba", outcomes: ["Yes", "No"],
       tokens: { yes_token_id: "mock_1_yes", no_token_id: "mock_1_no" },
     },
@@ -152,6 +162,7 @@ function generateMockMarkets(): Market[] {
       description: "Market resolves Yes if LeBron James is named the 2025-26 NBA Regular Season MVP.",
       yes_price: 0.08, no_price: 0.92, volume: 1_200_000, volume_24h: 45_000,
       liquidity: 180_000, end_date: new Date(Date.now() + 86400000 * 60).toISOString(),
+      event_date: new Date(Date.now() + 86400000 * 60).toISOString(),
       image: "", category: "nba", outcomes: ["Yes", "No"],
       tokens: { yes_token_id: "mock_2_yes", no_token_id: "mock_2_no" },
     },
@@ -160,6 +171,7 @@ function generateMockMarkets(): Market[] {
       description: "Resolves Yes if Boston Celtics reach the 2025-26 NBA Finals.",
       yes_price: 0.45, no_price: 0.55, volume: 3_100_000, volume_24h: 120_000,
       liquidity: 520_000, end_date: new Date(Date.now() + 86400000 * 75).toISOString(),
+      event_date: new Date(Date.now() + 86400000 * 75).toISOString(),
       image: "", category: "nba", outcomes: ["Yes", "No"],
       tokens: { yes_token_id: "mock_3_yes", no_token_id: "mock_3_no" },
     },
@@ -168,6 +180,7 @@ function generateMockMarkets(): Market[] {
       description: "Resolves Yes if the Kansas City Chiefs win Super Bowl LXI.",
       yes_price: 0.22, no_price: 0.78, volume: 5_600_000, volume_24h: 230_000,
       liquidity: 890_000, end_date: new Date(Date.now() + 86400000 * 200).toISOString(),
+      event_date: new Date(Date.now() + 86400000 * 200).toISOString(),
       image: "", category: "nfl", outcomes: ["Yes", "No"],
       tokens: { yes_token_id: "mock_4_yes", no_token_id: "mock_4_no" },
     },
@@ -176,6 +189,7 @@ function generateMockMarkets(): Market[] {
       description: "Market resolves Yes if any UFC heavyweight championship bout takes place in July-September 2026.",
       yes_price: 0.65, no_price: 0.35, volume: 890_000, volume_24h: 34_000,
       liquidity: 120_000, end_date: new Date(Date.now() + 86400000 * 150).toISOString(),
+      event_date: new Date(Date.now() + 86400000 * 150).toISOString(),
       image: "", category: "ufc", outcomes: ["Yes", "No"],
       tokens: { yes_token_id: "mock_5_yes", no_token_id: "mock_5_no" },
     },
@@ -184,6 +198,7 @@ function generateMockMarkets(): Market[] {
       description: "Resolves Yes if Jon Jones competes in any sanctioned MMA bout before December 31, 2026.",
       yes_price: 0.35, no_price: 0.65, volume: 1_500_000, volume_24h: 67_000,
       liquidity: 210_000, end_date: new Date(Date.now() + 86400000 * 240).toISOString(),
+      event_date: new Date(Date.now() + 86400000 * 240).toISOString(),
       image: "", category: "ufc", outcomes: ["Yes", "No"],
       tokens: { yes_token_id: "mock_6_yes", no_token_id: "mock_6_no" },
     },
@@ -192,6 +207,7 @@ function generateMockMarkets(): Market[] {
       description: "Market resolves Yes if Donald Trump wins the most votes in the 2028 Republican presidential primary.",
       yes_price: 0.55, no_price: 0.45, volume: 8_900_000, volume_24h: 450_000,
       liquidity: 1_200_000, end_date: new Date(Date.now() + 86400000 * 400).toISOString(),
+      event_date: new Date(Date.now() + 86400000 * 400).toISOString(),
       image: "", category: "politics", outcomes: ["Yes", "No"],
       tokens: { yes_token_id: "mock_7_yes", no_token_id: "mock_7_no" },
     },
@@ -200,6 +216,7 @@ function generateMockMarkets(): Market[] {
       description: "Resolves Yes if Democrats hold the majority in the US Senate after the 2026 midterm elections.",
       yes_price: 0.42, no_price: 0.58, volume: 6_200_000, volume_24h: 310_000,
       liquidity: 950_000, end_date: new Date(Date.now() + 86400000 * 300).toISOString(),
+      event_date: new Date(Date.now() + 86400000 * 300).toISOString(),
       image: "", category: "politics", outcomes: ["Yes", "No"],
       tokens: { yes_token_id: "mock_8_yes", no_token_id: "mock_8_no" },
     },
@@ -208,6 +225,7 @@ function generateMockMarkets(): Market[] {
       description: "Resolves Yes if a formal ceasefire agreement between Russia and Ukraine is signed before January 1, 2027.",
       yes_price: 0.28, no_price: 0.72, volume: 4_500_000, volume_24h: 190_000,
       liquidity: 670_000, end_date: new Date(Date.now() + 86400000 * 290).toISOString(),
+      event_date: new Date(Date.now() + 86400000 * 290).toISOString(),
       image: "", category: "world_events", outcomes: ["Yes", "No"],
       tokens: { yes_token_id: "mock_9_yes", no_token_id: "mock_9_no" },
     },
@@ -216,6 +234,7 @@ function generateMockMarkets(): Market[] {
       description: "Resolves Yes if any movie first released in 2026 crosses $2B in worldwide gross box office receipts.",
       yes_price: 0.38, no_price: 0.62, volume: 980_000, volume_24h: 42_000,
       liquidity: 150_000, end_date: new Date(Date.now() + 86400000 * 270).toISOString(),
+      event_date: new Date(Date.now() + 86400000 * 270).toISOString(),
       image: "", category: "entertainment", outcomes: ["Yes", "No"],
       tokens: { yes_token_id: "mock_10_yes", no_token_id: "mock_10_no" },
     },
@@ -224,6 +243,7 @@ function generateMockMarkets(): Market[] {
       description: "Resolves Yes if Manchester City finishes first in the 2025-26 English Premier League season.",
       yes_price: 0.33, no_price: 0.67, volume: 2_800_000, volume_24h: 95_000,
       liquidity: 430_000, end_date: new Date(Date.now() + 86400000 * 60).toISOString(),
+      event_date: new Date(Date.now() + 86400000 * 60).toISOString(),
       image: "", category: "soccer", outcomes: ["Yes", "No"],
       tokens: { yes_token_id: "mock_11_yes", no_token_id: "mock_11_no" },
     },
@@ -232,6 +252,7 @@ function generateMockMarkets(): Market[] {
       description: "Resolves Yes if Max Verstappen wins the 2026 Formula 1 World Drivers' Championship.",
       yes_price: 0.48, no_price: 0.52, volume: 1_900_000, volume_24h: 78_000,
       liquidity: 290_000, end_date: new Date(Date.now() + 86400000 * 200).toISOString(),
+      event_date: new Date(Date.now() + 86400000 * 200).toISOString(),
       image: "", category: "f1", outcomes: ["Yes", "No"],
       tokens: { yes_token_id: "mock_12_yes", no_token_id: "mock_12_no" },
     },
@@ -240,6 +261,7 @@ function generateMockMarkets(): Market[] {
       description: "Resolves Yes if the 2025-26 NHL Stanley Cup Finals series goes to a Game 7.",
       yes_price: 0.30, no_price: 0.70, volume: 750_000, volume_24h: 28_000,
       liquidity: 95_000, end_date: new Date(Date.now() + 86400000 * 80).toISOString(),
+      event_date: new Date(Date.now() + 86400000 * 80).toISOString(),
       image: "", category: "hockey", outcomes: ["Yes", "No"],
       tokens: { yes_token_id: "mock_13_yes", no_token_id: "mock_13_no" },
     },
@@ -248,6 +270,7 @@ function generateMockMarkets(): Market[] {
       description: "Resolves Yes if the New York Yankees reach the 2026 MLB World Series.",
       yes_price: 0.25, no_price: 0.75, volume: 1_100_000, volume_24h: 52_000,
       liquidity: 170_000, end_date: new Date(Date.now() + 86400000 * 150).toISOString(),
+      event_date: new Date(Date.now() + 86400000 * 150).toISOString(),
       image: "", category: "mlb", outcomes: ["Yes", "No"],
       tokens: { yes_token_id: "mock_14_yes", no_token_id: "mock_14_no" },
     },
@@ -256,6 +279,7 @@ function generateMockMarkets(): Market[] {
       description: "Resolves Yes if Carlos Alcaraz wins the men's singles title at the 2026 Wimbledon Championships.",
       yes_price: 0.40, no_price: 0.60, volume: 650_000, volume_24h: 31_000,
       liquidity: 88_000, end_date: new Date(Date.now() + 86400000 * 100).toISOString(),
+      event_date: new Date(Date.now() + 86400000 * 100).toISOString(),
       image: "", category: "tennis", outcomes: ["Yes", "No"],
       tokens: { yes_token_id: "mock_15_yes", no_token_id: "mock_15_no" },
     },
@@ -264,6 +288,7 @@ function generateMockMarkets(): Market[] {
       description: "Resolves Yes if any 16-seeded team defeats a 1-seeded team in the 2027 NCAA Men's Basketball Tournament.",
       yes_price: 0.15, no_price: 0.85, volume: 2_200_000, volume_24h: 110_000,
       liquidity: 320_000, end_date: new Date(Date.now() + 86400000 * 365).toISOString(),
+      event_date: new Date(Date.now() + 86400000 * 365).toISOString(),
       image: "", category: "college_basketball", outcomes: ["Yes", "No"],
       tokens: { yes_token_id: "mock_16_yes", no_token_id: "mock_16_no" },
     },
