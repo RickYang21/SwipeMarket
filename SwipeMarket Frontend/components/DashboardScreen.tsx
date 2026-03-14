@@ -256,10 +256,10 @@ export default function DashboardScreen() {
                                         </div>
                                         <div className="flex items-center gap-3 text-[10px] text-secondary/50">
                                             <span className="tabular-nums">
-                                                Entry: {(record.yes_price_at_swipe * 100).toFixed(0)}c
+                                                Entry: {Math.max(1, Math.round(record.yes_price_at_swipe * 100))}%
                                             </span>
                                             <span className="tabular-nums">
-                                                Now: {(currentPrice * 100).toFixed(0)}c
+                                                Now: {Math.max(1, Math.round(currentPrice * 100))}%
                                             </span>
                                             {record.action === "buy" && (
                                                 <span

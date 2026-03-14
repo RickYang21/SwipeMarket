@@ -20,7 +20,7 @@ export default function SwipeScreen() {
     const [showRetry, setShowRetry] = useState(false);
     const [toast, setToast] = useState<{
         message: string;
-        type: "buy" | "skip" | "watchlist";
+        type: "buy" | "skip" | "watchlist" | "error";
     } | null>(null);
     const [showBetSheet, setShowBetSheet] = useState(false);
     const [selectedBet, setSelectedBet] = useState<number | null>(null);
@@ -198,6 +198,11 @@ export default function SwipeScreen() {
             };
 
             dispatch({ type: "ADD_SWIPE", record });
+
+            if (direction === "buy" && state.balance < state.betAmount) {
+                setToast({ message: "Insufficient funds", type: "error" });
+                return;
+            }
 
             if (direction === "buy") {
                 dispatch({ type: "DEDUCT_BALANCE", amount: state.betAmount });

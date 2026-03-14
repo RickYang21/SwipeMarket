@@ -399,10 +399,10 @@ export default function SwipeCard({ data, onSwipe, isTop, index = 0 }: SwipeCard
                         <div className="mb-5">
                             <div className="flex justify-between text-[11px] mb-2">
                                 <span className="text-accent-green font-semibold tracking-wide">
-                                    YES {(market.yes_price * 100).toFixed(0)}c
+                                    YES {Math.max(1, Math.round(market.yes_price * 100))}%
                                 </span>
                                 <span className="text-accent-red/80 font-semibold tracking-wide">
-                                    NO {(market.no_price * 100).toFixed(0)}c
+                                    NO {Math.max(1, Math.round(market.no_price * 100))}%
                                 </span>
                             </div>
                             <div className="odds-bar">

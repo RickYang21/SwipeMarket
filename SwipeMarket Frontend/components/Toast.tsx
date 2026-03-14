@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 interface ToastProps {
     message: string;
-    type: "buy" | "skip" | "watchlist";
+    type: "buy" | "skip" | "watchlist" | "error";
     onDone: () => void;
 }
 
@@ -38,6 +38,12 @@ export default function Toast({ message, type, onDone }: ToastProps) {
             border: "rgba(59, 130, 246, 0.2)",
             text: "text-accent-blue",
             shadow: "0 4px 16px rgba(59, 130, 246, 0.15)",
+        },
+        error: {
+            bg: "linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.1) 100%)",
+            border: "rgba(239, 68, 68, 0.35)",
+            text: "text-accent-red",
+            shadow: "0 4px 20px rgba(239, 68, 68, 0.25)",
         },
     };
 
