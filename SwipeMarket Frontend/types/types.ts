@@ -52,6 +52,9 @@ export interface SwipeRecord {
   timestamp: number;
   yes_price_at_swipe: number;
   bet_amount: number;
+  sold?: boolean;
+  sell_price?: number;
+  sell_timestamp?: number;
 }
 
 export interface Transaction {

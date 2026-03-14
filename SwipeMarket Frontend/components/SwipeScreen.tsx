@@ -227,41 +227,48 @@ export default function SwipeScreen() {
                 risk_level: "medium",
             };
 
-            const record = {
-                id: `s${Date.now()}`,
-                market: currentMarket,
-                analysis: analysis || fallbackAnalysis,
-                action: direction,
-                timestamp: Date.now(),
-                yes_price_at_swipe: currentMarket.yes_price,
-                bet_amount: state.betAmount,
-            };
-
-            dispatch({ type: "ADD_SWIPE", record });
-
-            if (direction === "buy" && state.balance < state.betAmount) {
-                setToast({ message: "Insufficient funds", type: "error" });
+            // Block buy with no balance — card snaps back, nothing recorded
+            if (direction === "buy" && state.balance <= 0) {
+                setToast({ message: "An error occurred", type: "error" });
                 return;
             }
 
+            // For buys, clamp to available balance (handles balance < betAmount gracefully)
+            const actualBet = direction === "buy"
+                ? Math.min(state.betAmount, state.balance)
+                : state.betAmount;
+
+            dispatch({
+                type: "ADD_SWIPE",
+                record: {
+                    id: `s${Date.now()}`,
+                    market: currentMarket,
+                    analysis: analysis || fallbackAnalysis,
+                    action: direction,
+                    timestamp: Date.now(),
+                    yes_price_at_swipe: currentMarket.yes_price,
+                    bet_amount: actualBet,
+                },
+            });
+
             if (direction === "buy") {
-                dispatch({ type: "DEDUCT_BALANCE", amount: state.betAmount });
+                dispatch({ type: "DEDUCT_BALANCE", amount: actualBet });
                 dispatch({
                     type: "ADD_TRANSACTION",
                     transaction: {
                         id: `t${Date.now()}`,
                         type: "bet",
-                        amount: state.betAmount,
+                        amount: actualBet,
                         description: `Bet on: ${currentMarket.question.substring(0, 40)}...`,
                         timestamp: Date.now(),
                     },
                 });
-                setToast({ message: `Bought -$${state.betAmount}`, type: "buy" });
+                setToast({ message: `Bought -$${actualBet}`, type: "buy" });
 
                 // Fire a real Liquid order for crypto cards (fire-and-forget)
                 if (isCryptoMarket(currentMarket)) {
                     const symbol = (currentMarket as CryptoMarket).currency_pair_code;
-                    placeLiquidOrder(symbol, "buy", state.betAmount).catch(() => {/* order failed silently */});
+                    placeLiquidOrder(symbol, "buy", actualBet).catch(() => {/* order failed silently */});
                 }
             } else if (direction === "skip") {
                 setToast({ message: "Skipped", type: "skip" });

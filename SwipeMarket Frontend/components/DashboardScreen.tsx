@@ -25,6 +25,7 @@ export default function DashboardScreen() {
 
     const totalPnL = useMemo(() => {
         return buys.reduce((acc, s) => {
+            if (s.sold) return acc;
             const drift = Math.sin(s.timestamp * 0.001) * 0.05;
             const currentPrice = Math.min(
                 0.99,
@@ -54,7 +55,13 @@ export default function DashboardScreen() {
         { id: "watchlist", label: "Watchlist" },
     ];
 
-    const getActionBadge = (action: string) => {
+    const getActionBadge = (action: string, sold?: boolean) => {
+        if (action === "buy" && sold) {
+            return {
+                label: "Sold",
+                class: "bg-secondary/10 text-secondary/50 border border-secondary/20",
+            };
+        }
         switch (action) {
             case "buy":
                 return {
@@ -76,7 +83,8 @@ export default function DashboardScreen() {
         }
     };
 
-    const getStripeClass = (action: string) => {
+    const getStripeClass = (action: string, sold?: boolean) => {
+        if (action === "buy" && sold) return "bg-secondary/30";
         switch (action) {
             case "buy":
                 return "stripe-buy";
@@ -87,6 +95,11 @@ export default function DashboardScreen() {
             default:
                 return "bg-secondary";
         }
+    };
+
+    const handleSell = (record: (typeof state.swipeHistory)[0], currentPrice: number) => {
+        const proceeds = record.bet_amount * (currentPrice / record.yes_price_at_swipe);
+        dispatch({ type: "SELL_POSITION", id: record.id, proceeds, sellPrice: currentPrice });
     };
 
     const stats = [
@@ -221,12 +234,14 @@ export default function DashboardScreen() {
                 ) : (
                     <div className="flex flex-col gap-2">
                         {filteredHistory.map((record, idx) => {
-                            const badge = getActionBadge(record.action);
+                            const badge = getActionBadge(record.action, record.sold);
                             const drift = Math.sin(record.timestamp * 0.001) * 0.05;
-                            const currentPrice = Math.min(
-                                0.99,
-                                Math.max(0.01, record.yes_price_at_swipe + drift)
-                            );
+                            const currentPrice = record.sold && record.sell_price != null
+                                ? record.sell_price
+                                : Math.min(0.99, Math.max(0.01, record.yes_price_at_swipe + drift));
+                            const pnlPct = record.action === "buy"
+                                ? ((currentPrice - record.yes_price_at_swipe) / record.yes_price_at_swipe) * 100
+                                : 0;
 
                             return (
                                 <motion.div
@@ -234,13 +249,11 @@ export default function DashboardScreen() {
                                     initial={{ opacity: 0, x: -8 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ delay: idx * 0.04, ease: [0.22, 1, 0.36, 1] }}
-                                    className="flex card-elevated rounded-xl overflow-hidden"
+                                    className={`flex card-elevated rounded-xl overflow-hidden ${record.sold ? "opacity-60" : ""}`}
                                 >
                                     {/* Color stripe */}
                                     <div
-                                        className={`w-[3px] min-h-full ${getStripeClass(
-                                            record.action
-                                        )}`}
+                                        className={`w-[3px] min-h-full ${getStripeClass(record.action, record.sold)}`}
                                     />
 
                                     <div className="flex-1 p-3">
@@ -254,30 +267,29 @@ export default function DashboardScreen() {
                                                 {badge.label}
                                             </span>
                                         </div>
-                                        <div className="flex items-center gap-3 text-[10px] text-secondary/50">
-                                            <span className="tabular-nums">
-                                                Entry: {Math.max(1, Math.round(record.yes_price_at_swipe * 100))}%
-                                            </span>
-                                            <span className="tabular-nums">
-                                                Now: {Math.max(1, Math.round(currentPrice * 100))}%
-                                            </span>
-                                            {record.action === "buy" && (
-                                                <span
-                                                    className={`font-semibold tabular-nums ${currentPrice >= record.yes_price_at_swipe
-                                                        ? "text-accent-green"
-                                                        : "text-accent-red"
-                                                        }`}
-                                                >
-                                                    {currentPrice >= record.yes_price_at_swipe
-                                                        ? "+"
-                                                        : ""}
-                                                    {(
-                                                        ((currentPrice - record.yes_price_at_swipe) /
-                                                            record.yes_price_at_swipe) *
-                                                        100
-                                                    ).toFixed(1)}
-                                                    %
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3 text-[10px] text-secondary/50">
+                                                <span className="tabular-nums">
+                                                    Entry: {Math.max(1, Math.round(record.yes_price_at_swipe * 100))}%
                                                 </span>
+                                                <span className="tabular-nums">
+                                                    {record.sold ? "Exit" : "Now"}: {Math.max(1, Math.round(currentPrice * 100))}%
+                                                </span>
+                                                {record.action === "buy" && (
+                                                    <span
+                                                        className={`font-semibold tabular-nums ${pnlPct >= 0 ? "text-accent-green" : "text-accent-red"}`}
+                                                    >
+                                                        {pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(1)}%
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {record.action === "buy" && !record.sold && (
+                                                <button
+                                                    onClick={() => handleSell(record, currentPrice)}
+                                                    className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-accent-red/10 text-accent-red border border-accent-red/20 active:scale-95 transition-transform"
+                                                >
+                                                    Sell
+                                                </button>
                                             )}
                                         </div>
                                     </div>
