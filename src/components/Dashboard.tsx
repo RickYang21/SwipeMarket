@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "@/stores/app-store";
 import { CATEGORY_CONFIG } from "@/lib/categories";
 import { isCryptoMarket } from "@/lib/liquid";
+import { TrendingUp } from "lucide-react";
 import AIRecommendation from "./AIRecommendation";
 
 type Segment = "all" | "buys" | "watchlist";
@@ -94,19 +95,13 @@ export default function Dashboard() {
   return (
     <div className="h-full overflow-y-auto pt-16 pb-24 px-4 space-y-4">
       {/* Portfolio header */}
-      <div className="bg-gradient-to-br from-[#1A1A2E] to-[#141428] rounded-2xl p-4 space-y-3">
-        <div className="text-center">
-          <motion.span
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-4xl font-bold text-white"
-          >
-            {total}
-          </motion.span>
-          <p className="text-xs text-[#9CA3AF] mt-1">Markets reviewed</p>
-          {/* Breakdown */}
+      <div className="bg-gradient-to-br from-zinc-900 to-black border border-zinc-800 rounded-2xl p-5 space-y-3 relative overflow-hidden shadow-lg">
+        <div className="absolute top-0 right-0 p-4 opacity-10"><TrendingUp size={64} /></div>
+        <div>
+          <p className="text-zinc-400 text-sm mb-1">Total Risked</p>
+          <div className="text-3xl font-mono font-bold">${stats.totalRisked.toFixed(2)}</div>
           {stats.cryptoCount > 0 && stats.predictionCount > 0 && (
-            <p className="text-[10px] text-[#6B7280] mt-0.5">
+            <p className="text-[10px] text-[#6B7280] mt-1">
               {stats.predictionCount} Prediction Markets &bull; {stats.cryptoCount} Crypto
             </p>
           )}

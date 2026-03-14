@@ -34,7 +34,8 @@ export default function AIRecommendation({
   }
 
   return (
-    <div className="bg-[#1A1A2E] rounded-xl p-3 space-y-2">
+    <div className="bg-[#141418] border border-[#F59E0B]/20 rounded-xl p-3 space-y-2 relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-24 h-24 bg-[#F59E0B]/5 rounded-bl-[100px] pointer-events-none" />
       {/* Verdict + Risk row */}
       <div className="flex items-center justify-between">
         <span
