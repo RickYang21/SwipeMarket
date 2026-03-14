@@ -8,6 +8,7 @@ import {
 } from "framer-motion";
 import { MarketWithAnalysis } from "@/types/types";
 import { isCryptoMarket } from "@/lib/liquid";
+import PolymarketChart from "./PolymarketChart";
 
 interface SwipeCardProps {
     data: MarketWithAnalysis;
@@ -428,10 +429,11 @@ export default function SwipeCard({ data, onSwipe, isTop, index = 0 }: SwipeCard
                                         NO {Math.max(1, Math.round(market.no_price * 100))}%
                                     </span>
                                 </div>
-                                <div className="odds-bar">
-                                    <div
-                                        className="odds-bar-yes"
-                                        style={{ width: `${market.yes_price * 100}%` }}
+                                <div className="px-1">
+                                    <PolymarketChart
+                                        data={market.price_history || [market.yes_price]}
+                                        yesColor="#10B981"
+                                        noColor="#EF4444"
                                     />
                                 </div>
                             </div>
