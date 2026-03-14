@@ -63,6 +63,24 @@ export async function fetchAnalysis(
 }
 
 /**
+ * Place a trade on Liquid for a crypto card swipe.
+ */
+export async function placeLiquidOrder(
+  symbol: string,
+  side: "buy" | "sell",
+  size: number,
+  leverage = 2
+): Promise<{ order_id: string; status: string; mock?: boolean }> {
+  const res = await fetch("/api/liquid/order", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ symbol, side, type: "market", size, leverage }),
+  });
+  if (!res.ok) throw new Error(`Order API returned ${res.status}`);
+  return res.json();
+}
+
+/**
  * Merge polymarket and crypto cards, inserting a crypto card every 3rd position.
  */
 export function mergeMarkets(

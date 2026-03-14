@@ -5,7 +5,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useApp } from "@/context/AppContext";
 import { Market, MarketAnalysis } from "@/types/types";
 import { CATEGORY_CONFIG } from "@/lib/categories";
-import { fetchMarkets, fetchCryptoMarkets, fetchAnalysis, mergeMarkets } from "@/lib/api";
+import { fetchMarkets, fetchCryptoMarkets, fetchAnalysis, mergeMarkets, placeLiquidOrder } from "@/lib/api";
+import { isCryptoMarket } from "@/lib/liquid";
+import { CryptoMarket } from "@/types/types";
 import SwipeCard from "./SwipeCard";
 import Toast from "./Toast";
 
@@ -28,6 +30,7 @@ export default function SwipeScreen() {
     const abortRef = useRef<AbortController | null>(null);
     const retryTimerRef = useRef<NodeJS.Timeout | null>(null);
     const fetchingAnalysesRef = useRef<Set<string>>(new Set());
+    const tickerPollRef = useRef<NodeJS.Timeout | null>(null);
 
     // Fetch analysis for the current card and the next one (prefetch)
     const fetchAnalysisForIndex = useCallback(
@@ -139,6 +142,43 @@ export default function SwipeScreen() {
         }
     }, [currentIndex, markets, fetchAnalysisForIndex]);
 
+    // Poll live ticker for the current Liquid card every 5s
+    useEffect(() => {
+        if (tickerPollRef.current) clearInterval(tickerPollRef.current);
+
+        const current = markets[currentIndex];
+        if (!current || !isCryptoMarket(current)) return;
+
+        const symbol = (current as CryptoMarket).currency_pair_code;
+        const idx = currentIndex;
+
+        const poll = async () => {
+            try {
+                const res = await fetch(`/api/liquid/ticker?symbol=${encodeURIComponent(symbol)}`);
+                if (!res.ok) return;
+                const ticker = await res.json();
+                const markPrice = parseFloat(String(ticker.mark_price));
+                const changePct = parseFloat(String(ticker.change_24h));
+                if (!markPrice) return;
+                setMarkets(prev => prev.map((m, i) => {
+                    if (i !== idx) return m;
+                    const yesPrice = Math.max(0.01, Math.min(0.99, 0.5 + (changePct / 100) * 0.4));
+                    return {
+                        ...m,
+                        current_price: markPrice,
+                        price_change_pct: changePct,
+                        yes_price: yesPrice,
+                        no_price: parseFloat((1 - yesPrice).toFixed(4)),
+                    } as CryptoMarket;
+                }));
+            } catch { /* ignore, stale price is fine */ }
+        };
+
+        tickerPollRef.current = setInterval(poll, 5000);
+        return () => { if (tickerPollRef.current) clearInterval(tickerPollRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentIndex]);
+
     // Request more markets when running low
     useEffect(() => {
         if (markets.length > 0 && markets.length - currentIndex < 5 && !loading) {
@@ -217,6 +257,12 @@ export default function SwipeScreen() {
                     },
                 });
                 setToast({ message: `Bought -$${state.betAmount}`, type: "buy" });
+
+                // Fire a real Liquid order for crypto cards (fire-and-forget)
+                if (isCryptoMarket(currentMarket)) {
+                    const symbol = (currentMarket as CryptoMarket).currency_pair_code;
+                    placeLiquidOrder(symbol, "buy", state.betAmount).catch(() => {/* order failed silently */});
+                }
             } else if (direction === "skip") {
                 setToast({ message: "Skipped", type: "skip" });
             } else {
@@ -227,7 +273,7 @@ export default function SwipeScreen() {
                 setCurrentIndex((prev) => prev + 1);
             }, 100);
         },
-        [currentIndex, markets, analyses, dispatch, state.betAmount]
+        [currentIndex, markets, analyses, dispatch, state.betAmount, state.balance]
     );
 
     const activeCategories = state.selectedCategories.slice(0, 3);

@@ -212,7 +212,7 @@ export default function DashboardScreen() {
                             Head to Explore to discover markets and build your portfolio.
                         </p>
                         <button
-                            onClick={() => dispatch({ type: "SET_SCREEN", screen: "swipe" })}
+                            onClick={() => dispatch({ type: "SET_SCREEN", screen: "explore" })}
                             className="px-6 py-2.5 rounded-xl text-[13px] font-semibold text-white btn-primary transition-all duration-300"
                         >
                             Start Swiping
