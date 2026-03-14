@@ -596,10 +596,6 @@ export default function SwipeCard({ data, onSwipe, isTop, index = 0 }: SwipeCard
                                     <span className="text-[10px] font-bold text-accent-gold/90 tabular-nums">{analysis.confidence}%</span>
                                 </div>
 
-                                {market.price_history && market.price_history.length >= 2 && !isCrypto && (
-                                    <div className="mb-2"><MiniSparkline data={market.price_history} /></div>
-                                )}
-
                                 <div className="space-y-1 mb-2">
                                     {analysis.bullets.slice(0, 5).map((bullet, i) => (
                                         <BulletRow key={i} text={bullet} />
