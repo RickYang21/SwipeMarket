@@ -5,6 +5,18 @@ import { Market } from "@/lib/types";
 let cache: { data: Market[]; timestamp: number } | null = null;
 const CACHE_TTL = 60_000; // 60 seconds
 
+function generatePriceHistory(currentPrice: number, points: number = 24): number[] {
+  // Walk backward from current price to create a realistic history
+  const history: number[] = [currentPrice];
+  let price = currentPrice;
+  for (let i = 1; i < points; i++) {
+    const drift = (Math.random() - 0.52) * 0.06; // slight mean reversion
+    price = Math.max(0.02, Math.min(0.98, price - drift));
+    history.unshift(price);
+  }
+  return history;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapPolymarketData(raw: any, matchedCategory: string): Market {
   // Parse outcomePrices from JSON string if needed
@@ -56,6 +68,7 @@ function mapPolymarketData(raw: any, matchedCategory: string): Market {
       yes_token_id: tokenIds[0] || "",
       no_token_id: tokenIds[1] || "",
     },
+    price_history: generatePriceHistory(yesPrice),
   };
 }
 
@@ -297,5 +310,6 @@ function generateMockMarkets(): Market[] {
   return mocks.map((m, i) => ({
     ...m,
     id: `mock_${i + 1}`,
+    price_history: generatePriceHistory(m.yes_price),
   }));
 }

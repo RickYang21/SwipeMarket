@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { useApp } from "@/stores/app-store";
 import { Market } from "@/lib/types";
@@ -27,12 +27,26 @@ export default function SwipeScreen() {
   const { selectedCategories, setExploreView, wallet, setActiveTab } = useApp();
   const [markets, setMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showRetry, setShowRetry] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const retryTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchMarkets = useCallback(async () => {
     if (selectedCategories.length === 0) {
       setLoading(false);
       return;
     }
+
+    // Cancel any in-flight request
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setShowRetry(false);
+
+    // Show retry button after 15 seconds
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    retryTimerRef.current = setTimeout(() => setShowRetry(true), 15000);
 
     const polymarketCats = selectedCategories.filter((c) => c !== "crypto");
     const wantsCrypto = selectedCategories.includes("crypto");
@@ -43,10 +57,15 @@ export default function SwipeScreen() {
       // Fetch Polymarket if non-crypto categories selected
       if (polymarketCats.length > 0) {
         promises.push(
-          fetch(`/api/markets?categories=${polymarketCats.join(",")}`)
+          fetch(`/api/markets?categories=${polymarketCats.join(",")}`, {
+            signal: controller.signal,
+          })
             .then((r) => r.json())
             .then((data) => data.markets || [])
-            .catch(() => [])
+            .catch((e) => {
+              if (e.name === "AbortError") throw e;
+              return [];
+            })
         );
       } else {
         promises.push(Promise.resolve([]));
@@ -55,16 +74,22 @@ export default function SwipeScreen() {
       // Fetch Liquid crypto if crypto selected
       if (wantsCrypto) {
         promises.push(
-          fetch("/api/liquid")
+          fetch("/api/liquid", { signal: controller.signal })
             .then((r) => r.json())
             .then((data) => data.markets || [])
-            .catch(() => [])
+            .catch((e) => {
+              if (e.name === "AbortError") throw e;
+              return [];
+            })
         );
       } else {
         promises.push(Promise.resolve([]));
       }
 
       const [polymarketData, cryptoData] = await Promise.all(promises);
+
+      // Don't update state if this request was aborted
+      if (controller.signal.aborted) return;
 
       // Merge and deduplicate
       const merged = mergeMarkets(polymarketData, cryptoData);
@@ -75,9 +100,14 @@ export default function SwipeScreen() {
         return [...prev, ...newMarkets];
       });
     } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") return;
       console.error("Failed to fetch markets:", e);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+        if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+        setShowRetry(false);
+      }
     }
   }, [selectedCategories]);
 
@@ -85,6 +115,10 @@ export default function SwipeScreen() {
     setMarkets([]);
     setLoading(true);
     fetchMarkets();
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
   }, [fetchMarkets]);
 
   return (
@@ -134,6 +168,18 @@ export default function SwipeScreen() {
           <div className="flex flex-col items-center justify-center h-full gap-3">
             <div className="w-12 h-12 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
             <p className="text-sm text-[#9CA3AF]">Finding markets...</p>
+            {showRetry && (
+              <button
+                onClick={() => {
+                  setMarkets([]);
+                  setLoading(true);
+                  fetchMarkets();
+                }}
+                className="mt-2 px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-400 text-sm font-medium"
+              >
+                Retry
+              </button>
+            )}
           </div>
         ) : markets.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8">

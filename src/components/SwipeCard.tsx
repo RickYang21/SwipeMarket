@@ -8,6 +8,7 @@ import OddsBar from "./OddsBar";
 import MarketStats from "./MarketStats";
 import CryptoPriceBar from "./CryptoPriceBar";
 import AIRecommendation from "./AIRecommendation";
+import Sparkline from "./Sparkline";
 
 interface SwipeCardProps {
   market: Market;
@@ -173,6 +174,14 @@ export default function SwipeCard({ market, analysis, onSwipe, isTop, index, sho
 
               </div>
 
+              {/* Price chart */}
+              {market.price_history && market.price_history.length > 1 && (
+                <div className="flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                  <span className="text-[10px] text-[#6B7280]">24h Price</span>
+                  <Sparkline data={market.price_history} width={160} height={28} />
+                </div>
+              )}
+
               {/* Price range bar */}
               <CryptoPriceBar
                 currentPrice={market.current_price}
@@ -230,6 +239,18 @@ export default function SwipeCard({ market, analysis, onSwipe, isTop, index, sho
               </h3>
 
               <OddsBar yesPrice={market.yes_price} noPrice={market.no_price} />
+
+              {/* Price history chart */}
+              {market.price_history && market.price_history.length > 1 && (
+                <div className="flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                  <div>
+                    <span className="text-[10px] text-[#6B7280]">YES % History</span>
+                    <p className="text-[10px] text-white font-semibold">{Math.round(market.yes_price * 100)}%</p>
+                  </div>
+                  <Sparkline data={market.price_history} width={160} height={28} />
+                </div>
+              )}
+
               <MarketStats volume={market.volume} liquidity={market.liquidity} volume24h={market.volume_24h} />
 
               {analysis ? (

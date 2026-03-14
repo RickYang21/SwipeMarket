@@ -25,27 +25,55 @@ export async function POST(request: NextRequest) {
 
     const client = new Anthropic({ apiKey });
 
+    // Web research for crypto
+    let research = "";
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(
+        `https://html.duckduckgo.com/html/?q=${encodeURIComponent(market.base_currency + " crypto price news 2026")}`,
+        {
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; SwipeMarket/1.0)" },
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeout);
+      const html = await res.text();
+      const snippets: string[] = [];
+      const regex = /class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
+      let match;
+      while ((match = regex.exec(html)) !== null && snippets.length < 5) {
+        const text = match[1].replace(/<[^>]*>/g, "").trim();
+        if (text.length > 20) snippets.push(text);
+      }
+      if (snippets.length > 0) {
+        research = "Recent web research:\n" + snippets.map((s) => `- ${s}`).join("\n");
+      }
+    } catch {
+      // continue without research
+    }
+
     const response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 500,
-      system: `You are an elite crypto trader giving advice on a mobile trading app. You receive data about a cryptocurrency pair including current price, 24h change, volume, and price range.
+      max_tokens: 800,
+      system: `You are an elite crypto analyst on a mobile trading app. You combine price action data with real-world research to give clear, actionable signals.
 
-Give a clear BUY or SKIP verdict. Be direct — users are swiping fast.
+Your analysis must be scannable — users swipe through fast.
 
-Consider:
-- Is the 24h momentum bullish or bearish?
-- Is volume strong enough to support the move?
-- Is the price near the 24h high (risky) or low (opportunity)?
-- What's the spread telling you about liquidity?
+FORMATTING RULES:
+- Use bullet points (start each line with •) for reasoning, bull_case, and bear_case
+- Bold **key terms** that help users scan (coin names, percentages, price levels, key facts)
+- Keep each bullet to ONE short sentence
+- Be specific — cite real numbers and events, not generic statements
 
 Respond ONLY in this exact JSON format:
 {
   "verdict": "STRONG BUY" | "BUY" | "LEAN BUY" | "SKIP",
   "confidence": <number 0-100>,
-  "reasoning": "<2-3 punchy sentences>",
-  "bull_case": "<1 sentence>",
-  "bear_case": "<1 sentence>",
-  "edge": "<1 sentence about where the opportunity is>",
+  "reasoning": "<3-4 bullet points starting with •, separated by \\n, with **bold** key terms>",
+  "bull_case": "<1-2 bullet points starting with •>",
+  "bear_case": "<1-2 bullet points starting with •>",
+  "edge": "<1 sentence about where the opportunity is, **bold** the key insight>",
   "risk_level": "low" | "medium" | "high"
 }`,
       messages: [
@@ -63,7 +91,9 @@ Current price: $${market.current_price}
 24h volume (USD): $${market.volume.toLocaleString()}
 Spread: $${market.spread.toFixed(4)}
 
-Give your trading analysis in the required JSON format.`,
+${research}
+
+Give your trading analysis in the required JSON format. Reference specific facts from the research where relevant.`,
         },
       ],
     });
@@ -94,10 +124,10 @@ Give your trading analysis in the required JSON format.`,
     const fallback: MarketAnalysis = {
       verdict: "LEAN BUY",
       confidence: 55,
-      reasoning: "Crypto momentum looks moderate. Volume suggests decent activity but watch for reversal signals.",
-      bull_case: "Current momentum could continue if volume holds.",
-      bear_case: "Crypto can reverse quickly — extended moves often pull back.",
-      edge: "Price-action suggests the market hasn't fully priced in recent momentum.",
+      reasoning: "• Crypto momentum looks **moderate** right now\n• Volume suggests **decent activity** but watch for reversal signals\n• Price action is **inconclusive** — wait for confirmation",
+      bull_case: "• Current momentum could **continue** if volume holds",
+      bear_case: "• Crypto can **reverse quickly** — extended moves often pull back",
+      edge: "Price-action suggests the market hasn't fully priced in **recent momentum**",
       risk_level: "medium",
     };
     return NextResponse.json({ analysis: fallback });
@@ -145,10 +175,10 @@ function generateMockCryptoAnalysis(market: CryptoMarket): MarketAnalysis {
   const pct = `${Math.abs(pctChange).toFixed(1)}%`;
 
   const reasonings: Record<string, string> = {
-    "STRONG BUY": `${base} is ${dir} ${pct} and trading near the 24h low — classic dip-buy setup. Volume is strong at $${(market.volume / 1_000_000).toFixed(1)}M, confirming real buyer interest. The spread is tight enough for a clean entry.`,
-    "BUY": `${base} shows solid momentum, ${dir} ${pct} with healthy volume. The price sits in a favorable range position — not overextended but showing conviction. Good risk/reward for a swing position.`,
-    "LEAN BUY": `${base} is ${dir} ${pct} with moderate signals. There's opportunity here but the setup isn't perfect — position size accordingly. Watch the 24h range boundaries for confirmation.`,
-    "SKIP": `${base} is trading near the 24h high after a ${pct} move — too extended for entry. The risk of a pullback outweighs the remaining upside. Wait for a better entry or look at other pairs.`,
+    "STRONG BUY": `• **${base}** is ${dir} **${pct}** and trading near the **24h low** — classic dip-buy\n• Volume is strong at **$${(market.volume / 1_000_000).toFixed(1)}M**, confirming real buyer interest\n• Spread is **tight enough** for a clean entry and exit`,
+    "BUY": `• **${base}** shows solid momentum, ${dir} **${pct}** with healthy volume\n• Price sits in a **favorable range** — not overextended but showing conviction\n• Good **risk/reward** setup for a swing position`,
+    "LEAN BUY": `• **${base}** is ${dir} **${pct}** with moderate signals\n• Opportunity exists but the setup **isn't perfect** — size accordingly\n• Watch the **24h range boundaries** for confirmation`,
+    "SKIP": `• **${base}** is near the **24h high** after a **${pct}** move — too extended\n• **Pullback risk** outweighs remaining upside at this level\n• Better to **wait for a dip** or look at other pairs`,
   };
 
   return {
@@ -156,14 +186,14 @@ function generateMockCryptoAnalysis(market: CryptoMarket): MarketAnalysis {
     confidence,
     reasoning: reasonings[verdict],
     bull_case: pctChange >= 0
-      ? `Bullish momentum of +${pct} could continue with volume supporting the move.`
-      : `Oversold bounce potential — ${base} has room to recover from the ${pct} dip.`,
+      ? `• Bullish momentum of **+${pct}** could continue with volume support`
+      : `• **Oversold** bounce potential — ${base} has room to recover from **${pct}** dip`,
     bear_case: isNearHigh
-      ? `Extended near the 24h high — profit-taking could trigger a sharp pullback.`
-      : `Crypto volatility means any position can reverse 5-10% without warning.`,
+      ? `• Extended near **24h high** — profit-taking could trigger a sharp pullback`
+      : `• Crypto volatility means any position can **reverse 5-10%** without warning`,
     edge: isNearLow
-      ? `Price near 24h low creates favorable risk/reward — limited downside with significant upside potential.`
-      : `Spread of $${market.spread.toFixed(2)} suggests decent liquidity for clean execution.`,
+      ? `Price near **24h low** creates favorable risk/reward — limited downside with **significant upside**`
+      : `Spread of **$${market.spread.toFixed(2)}** suggests decent liquidity for clean execution`,
     risk_level,
   };
 }

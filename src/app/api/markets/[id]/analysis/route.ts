@@ -5,6 +5,37 @@ import { MarketAnalysis, Market } from "@/lib/types";
 const analysisCache = new Map<string, { data: MarketAnalysis; timestamp: number }>();
 const CACHE_TTL = 5 * 60_000; // 5 minutes
 
+async function webSearch(query: string): Promise<string> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const res = await fetch(
+      `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query + " latest news 2026")}`,
+      {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; SwipeMarket/1.0)" },
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeout);
+    const html = await res.text();
+
+    const snippets: string[] = [];
+    const regex = /class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
+    let match;
+    while ((match = regex.exec(html)) !== null && snippets.length < 5) {
+      const text = match[1].replace(/<[^>]*>/g, "").trim();
+      if (text.length > 20) snippets.push(text);
+    }
+
+    return snippets.length > 0
+      ? "Recent web research:\n" + snippets.map((s) => `- ${s}`).join("\n")
+      : "";
+  } catch {
+    return "";
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const market: Market = await request.json();
@@ -18,27 +49,37 @@ export async function POST(request: NextRequest) {
     // Try to use Anthropic API
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      // Return smart mock analysis if no API key
       const analysis = generateMockAnalysis(market);
       analysisCache.set(market.id, { data: analysis, timestamp: Date.now() });
       return NextResponse.json({ analysis });
     }
 
+    // Run web research in parallel with setup
+    const research = await webSearch(market.question);
+
     const client = new Anthropic({ apiKey });
 
     const response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 500,
-      system: `You are an elite prediction market trader giving advice on a mobile app. Analyze the market data and give a clear BUY or SKIP verdict. Be direct and opinionated — users are swiping fast and need a quick signal. Explain WHY in 2-3 punchy sentences. Identify any edge where the market might be mispriced. Never hedge — commit to your call.
+      max_tokens: 800,
+      system: `You are an elite prediction market analyst on a mobile trading app. You combine market data with real-world research to give clear, actionable signals.
+
+Your analysis must be scannable — users swipe through markets fast.
+
+FORMATTING RULES:
+- Use bullet points (start each line with •) for reasoning, bull_case, and bear_case
+- Bold **key terms** that help users scan (names, percentages, key facts, dates)
+- Keep each bullet to ONE short sentence
+- Be specific — cite real facts, stats, or events, not generic statements
 
 Respond in this EXACT JSON format only, with no other text:
 {
   "verdict": "STRONG BUY" | "BUY" | "LEAN BUY" | "SKIP",
   "confidence": <number 0-100>,
-  "reasoning": "<2-3 sentences>",
-  "bull_case": "<1 sentence>",
-  "bear_case": "<1 sentence>",
-  "edge": "<1 sentence about potential mispricing>",
+  "reasoning": "<3-4 bullet points starting with •, separated by \\n, with **bold** key terms>",
+  "bull_case": "<1-2 bullet points starting with •>",
+  "bear_case": "<1-2 bullet points starting with •>",
+  "edge": "<1 sentence about mispricing, **bold** the key insight>",
   "risk_level": "low" | "medium" | "high"
 }`,
       messages: [
@@ -56,7 +97,9 @@ Liquidity: $${market.liquidity.toLocaleString()}
 End date: ${market.end_date}
 Category: ${market.category}
 
-Give your trading analysis in the required JSON format.`,
+${research}
+
+Give your trading analysis in the required JSON format. Reference specific facts from the research in your bullet points where relevant.`,
         },
       ],
     });
@@ -88,10 +131,10 @@ Give your trading analysis in the required JSON format.`,
     const fallback: MarketAnalysis = {
       verdict: "LEAN BUY",
       confidence: 55,
-      reasoning: "Market data suggests moderate opportunity. Volume indicates decent interest, but odds need closer examination for a definitive call.",
-      bull_case: "Current pricing may underweight momentum factors.",
-      bear_case: "Limited liquidity could make exit difficult.",
-      edge: "Market sentiment hasn't fully priced in recent developments.",
+      reasoning: "• Market data suggests **moderate opportunity**\n• Volume indicates **decent interest** but needs closer look\n• Odds haven't fully adjusted to **recent developments**",
+      bull_case: "• Current pricing may **underweight momentum** factors",
+      bear_case: "• Limited **liquidity** could make exit difficult",
+      edge: "Market sentiment hasn't fully priced in **recent developments**",
       risk_level: "medium",
     };
     return NextResponse.json({ analysis: fallback });

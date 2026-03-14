@@ -4,6 +4,18 @@ import { CryptoMarket, getCryptoIcon } from "@/lib/liquid";
 let cache: { data: CryptoMarket[]; timestamp: number } | null = null;
 const CACHE_TTL = 30_000; // 30 seconds
 
+function generateCryptoPriceHistory(current: number, low: number, high: number, points: number = 24): number[] {
+  const history: number[] = [current];
+  let price = current;
+  const volatility = (high - low) / current * 0.15;
+  for (let i = 1; i < points; i++) {
+    const drift = (Math.random() - 0.52) * volatility * current;
+    price = Math.max(low * 0.95, Math.min(high * 1.05, price - drift));
+    history.unshift(price);
+  }
+  return history;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function transformProduct(raw: any): CryptoMarket | null {
   const currentPrice = parseFloat(raw.last_traded_price || "0");
@@ -57,6 +69,7 @@ function transformProduct(raw: any): CryptoMarket | null {
     low_24h: low,
     spread,
     currency_pair_code: raw.currency_pair_code || `${base}${quoted}`,
+    price_history: generateCryptoPriceHistory(currentPrice, low, high),
   };
 }
 
@@ -109,6 +122,7 @@ function generateMockCrypto(): CryptoMarket[] {
       low_24h: m.low,
       spread,
       currency_pair_code: `${m.base}USD`,
+      price_history: generateCryptoPriceHistory(m.price, m.low, m.high),
     };
   });
 }

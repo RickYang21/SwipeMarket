@@ -15,6 +15,30 @@ const RISK_STYLES: Record<string, { label: string; icon: string }> = {
   high: { label: "High Risk", icon: "⚡" },
 };
 
+function RichText({ text, className = "" }: { text: string; className?: string }) {
+  return (
+    <div className={`space-y-1 ${className}`}>
+      {text.split("\n").map((line, i) => {
+        const parts = line.split(/(\*\*.*?\*\*)/g);
+        return (
+          <p key={i}>
+            {parts.map((part, j) => {
+              if (part.startsWith("**") && part.endsWith("**")) {
+                return (
+                  <span key={j} className="text-white font-bold">
+                    {part.slice(2, -2)}
+                  </span>
+                );
+              }
+              return <span key={j}>{part}</span>;
+            })}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function AIRecommendation({
   analysis,
   compact = false,
@@ -60,25 +84,24 @@ export default function AIRecommendation({
       </div>
 
       {/* Reasoning */}
-      <div className="text-xs text-[#D1D5DB] leading-relaxed space-y-1.5">
-        {analysis.reasoning.split('\n').map((line, i) => {
-          // Parse bold text **like this**
-          const parts = line.split(/(\*\*.*?\*\*)/g);
-          return (
-            <p key={i}>
-              {parts.map((part, j) => {
-                if (part.startsWith('**') && part.endsWith('**')) {
-                  return <span key={j} className="text-white font-bold">{part.slice(2, -2)}</span>;
-                }
-                return <span key={j}>{part}</span>;
-              })}
-            </p>
-          );
-        })}
+      <RichText text={analysis.reasoning} className="text-xs text-[#D1D5DB] leading-relaxed" />
+
+      {/* Bull / Bear cases */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-emerald-500/5 rounded-lg px-2 py-1.5">
+          <p className="text-[9px] text-emerald-500 font-semibold mb-0.5">BULL CASE</p>
+          <RichText text={analysis.bull_case} className="text-[10px] text-[#D1D5DB] leading-snug" />
+        </div>
+        <div className="bg-red-500/5 rounded-lg px-2 py-1.5">
+          <p className="text-[9px] text-red-500 font-semibold mb-0.5">BEAR CASE</p>
+          <RichText text={analysis.bear_case} className="text-[10px] text-[#D1D5DB] leading-snug" />
+        </div>
       </div>
 
       {/* Edge */}
-      <p className="text-[11px] text-amber-400/80 italic">Edge: {analysis.edge}</p>
+      <div className="text-[11px] text-amber-400/80 italic">
+        <RichText text={`Edge: ${analysis.edge}`} className="[&_p]:inline" />
+      </div>
     </div>
   );
 }
