@@ -143,6 +143,7 @@ export default function SwipeCard({ market, analysis, onSwipe, isTop, index, sho
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-4 pb-3 space-y-3">
+<<<<<<< HEAD
           {isCrypto && isCryptoMarket(market) ? (
             // CRYPTO CARD CONTENT
             <>
@@ -169,6 +170,32 @@ export default function SwipeCard({ market, analysis, onSwipe, isTop, index, sho
                     {market.price_change_pct >= 0 ? "↑" : "↓"} {Math.abs(market.price_change_pct).toFixed(1)}%
                   </span>
                 </div>
+=======
+          {/* Question */}
+          <h3
+            className="text-[17px] font-bold text-white leading-tight line-clamp-3 -mt-1"
+            style={{ fontFamily: '"SF Pro Display", "Geist", system-ui' }}
+          >
+            {market.question}
+          </h3>
+
+          {/* Odds bar */}
+          <OddsBar yesPrice={market.yes_price} noPrice={market.no_price} />
+
+          {/* Stats */}
+          <MarketStats volume={market.volume} liquidity={market.liquidity} volume24h={market.volume_24h} />
+
+          {/* AI Recommendation */}
+          {analysis ? (
+            <AIRecommendation analysis={analysis} />
+          ) : (
+            <div className="bg-[#1A1A2E] rounded-xl p-3 space-y-2">
+              <div className="h-6 w-24 bg-white/5 rounded-full animate-pulse" />
+              <div className="h-1.5 w-full bg-white/5 rounded-full animate-pulse" />
+              <div className="space-y-1.5">
+                <div className="h-3 w-full bg-white/5 rounded animate-pulse" />
+                <div className="h-3 w-3/4 bg-white/5 rounded animate-pulse" />
+>>>>>>> parent of 1e586e9 (better ai)
               </div>
 
               {/* Price range bar */}
