@@ -1,0 +1,517 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-base: #0A0A0A;
+  --bg-surface: #141414;
+  --accent-green: #10B981;
+  --accent-red: #EF4444;
+  --accent-gold: #F59E0B;
+  --accent-blue: #3B82F6;
+  --text-primary: #FAFAFA;
+  --text-secondary: #9CA3AF;
+  --titanium: #2A2A2E;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: #0A0A0A;
+  color: #FAFAFA;
+  font-family: "SF Pro Display", "Geist", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* ================================================
+   NOISE / GRAIN TEXTURE OVERLAY
+   ================================================ */
+.noise-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 100;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 128px 128px;
+}
+
+/* ================================================
+   AMBIENT GLOW EFFECTS
+   ================================================ */
+.ambient-glow-green {
+  position: relative;
+}
+
+.ambient-glow-green::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120%;
+  height: 120%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.ambient-glow-gold {
+  position: relative;
+}
+
+.ambient-glow-gold::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 150%;
+  height: 150%;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ================================================
+   SHIMMER / SHINE ANIMATION
+   ================================================ */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-text {
+  background: linear-gradient(90deg,
+      #FAFAFA 0%,
+      #FAFAFA 40%,
+      rgba(245, 158, 11, 0.6) 50%,
+      #FAFAFA 60%,
+      #FAFAFA 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s ease-in-out infinite;
+}
+
+@keyframes subtle-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.pulse-slow {
+  animation: subtle-pulse 3s ease-in-out infinite;
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.float-slow {
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-animate {
+  background-size: 200% 200%;
+  animation: gradient-shift 6s ease infinite;
+}
+
+/* ================================================
+   PHONE FRAME SCROLLBAR HIDE
+   ================================================ */
+.phone-content::-webkit-scrollbar {
+  display: none;
+}
+
+.phone-content {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ================================================
+   FROSTED GLASS
+   ================================================ */
+.frosted-glass {
+  background: rgba(20, 20, 20, 0.65);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+/* ================================================
+   ELEVATED CARD WITH INNER HIGHLIGHT
+   ================================================ */
+.card-elevated {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%),
+    #1C1C1E;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset,
+    0 8px 24px -4px rgba(0, 0, 0, 0.4);
+}
+
+.card-elevated-sm {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%),
+    rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.03) inset;
+}
+
+/* ================================================
+   CATEGORY PILL GLOW
+   ================================================ */
+.pill-selected {
+  border-color: var(--accent-green);
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.12) 0%, rgba(16, 185, 129, 0.04) 100%);
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.2),
+    0 0 40px rgba(16, 185, 129, 0.06),
+    inset 0 1px 0 rgba(16, 185, 129, 0.15);
+}
+
+/* ================================================
+   SWIPE STAMP STYLES
+   ================================================ */
+.stamp {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  padding: 8px 20px;
+  border-width: 4px;
+  border-style: solid;
+  border-radius: 12px;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.stamp-buy {
+  right: 24px;
+  color: var(--accent-green);
+  border-color: var(--accent-green);
+  transform: translateY(-50%) rotate(-20deg);
+  text-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+}
+
+.stamp-skip {
+  left: 24px;
+  color: var(--accent-red);
+  border-color: var(--accent-red);
+  transform: translateY(-50%) rotate(20deg);
+  text-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+}
+
+.stamp-watchlist {
+  left: 50%;
+  color: var(--accent-blue);
+  border-color: var(--accent-blue);
+  transform: translate(-50%, -50%);
+  font-size: 28px;
+  text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+}
+
+/* ================================================
+   ODDS BAR (with softer end caps)
+   ================================================ */
+.odds-bar {
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.4) 0%, rgba(239, 68, 68, 0.6) 100%);
+}
+
+.odds-bar-yes {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.7) 0%, var(--accent-green) 100%);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* ================================================
+   BOTTOM SHEET OVERLAY
+   ================================================ */
+.sheet-overlay {
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(12px);
+}
+
+/* ================================================
+   TOAST ANIMATION
+   ================================================ */
+@keyframes toast-slide {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.toast-enter {
+  animation: toast-slide 0.3s ease-out;
+}
+
+/* ================================================
+   SEGMENT CONTROL
+   ================================================ */
+.segment-active {
+  background: rgba(255, 255, 255, 0.08);
+  color: #FAFAFA;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+/* ================================================
+   TRANSACTION TYPE INDICATORS
+   ================================================ */
+.tx-deposit {
+  color: var(--accent-green);
+}
+
+.tx-withdrawal {
+  color: var(--accent-red);
+}
+
+.tx-bet {
+  color: var(--accent-gold);
+}
+
+.tx-winnings {
+  color: var(--accent-green);
+}
+
+/* ================================================
+   CARD GLOW EFFECTS (on drag)
+   ================================================ */
+.glow-green {
+  box-shadow: 0 0 40px rgba(16, 185, 129, 0.25),
+    0 0 80px rgba(16, 185, 129, 0.08),
+    inset 0 0 30px rgba(16, 185, 129, 0.03);
+  border-radius: 16px;
+}
+
+.glow-red {
+  box-shadow: 0 0 40px rgba(239, 68, 68, 0.25),
+    0 0 80px rgba(239, 68, 68, 0.08),
+    inset 0 0 30px rgba(239, 68, 68, 0.03);
+  border-radius: 16px;
+}
+
+.glow-blue {
+  box-shadow: 0 0 40px rgba(59, 130, 246, 0.25),
+    0 0 80px rgba(59, 130, 246, 0.08),
+    inset 0 0 30px rgba(59, 130, 246, 0.03);
+  border-radius: 16px;
+}
+
+/* ================================================
+   VERDICT BADGES (with gradient treatments)
+   ================================================ */
+.verdict-strong-buy {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.08) 100%);
+  color: var(--accent-green);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.15);
+}
+
+.verdict-buy {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%);
+  color: var(--accent-green);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.verdict-lean-buy {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
+  color: var(--accent-gold);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.verdict-skip {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%);
+  color: var(--accent-red);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* ================================================
+   STAT CARD INNER GLOW
+   ================================================ */
+.stat-card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 4px 12px -2px rgba(0, 0, 0, 0.3);
+}
+
+/* ================================================
+   GRADIENT BORDER EFFECT
+   ================================================ */
+.gradient-border {
+  position: relative;
+}
+
+.gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 50%, rgba(16, 185, 129, 0.1) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ================================================
+   AI BOX SPECIAL TREATMENT
+   ================================================ */
+.ai-analysis-box {
+  background: linear-gradient(160deg, #1A1A2E 0%, #151528 50%, #1A1A2E 100%);
+  border: 1px solid rgba(245, 158, 11, 0.08);
+  box-shadow: 0 1px 0 rgba(245, 158, 11, 0.04) inset,
+    0 8px 24px -4px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-analysis-box::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.2), transparent);
+}
+
+/* ================================================
+   BALANCE HERO CARD
+   ================================================ */
+.balance-hero {
+  background: linear-gradient(160deg, rgba(16, 185, 129, 0.06) 0%, #1C1C1E 40%, rgba(59, 130, 246, 0.04) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 12px 32px -8px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.balance-hero::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -30%;
+  width: 60%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ================================================
+   BUTTON DEPTH EFFECTS
+   ================================================ */
+.btn-primary {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 4px 16px rgba(16, 185, 129, 0.3),
+    0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 2px 8px rgba(16, 185, 129, 0.2);
+}
+
+.btn-secondary {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+}
+
+/* ================================================
+   COLORED STRIPE (left edge of history items)
+   ================================================ */
+.stripe-buy {
+  background: linear-gradient(180deg, #10B981 0%, #059669 100%);
+}
+
+.stripe-skip {
+  background: linear-gradient(180deg, #EF4444 0%, #DC2626 100%);
+}
+
+.stripe-watchlist {
+  background: linear-gradient(180deg, #3B82F6 0%, #2563EB 100%);
+}
+
+/* ================================================
+   SCROLLBAR GUTTER (thin custom scrollbar for phone content)
+   ================================================ */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out both;
+}

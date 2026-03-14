@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AppProvider } from "@/context/AppContext";
 
 export const metadata: Metadata = {
-  title: "SwipeMarket — Swipe. Predict. Win.",
-  description: "Tinder for prediction markets. Swipe to discover, filter by what you care about, get AI-powered buy signals.",
+  title: "SwipeMarket - Prediction Market Discovery",
+  description: "Swipe through prediction markets with AI-powered recommendations. Buy, skip, or watchlist markets in a Tinder-style interface.",
 };
 
 export default function RootLayout({
@@ -14,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        {children}
+        <AppProvider>{children}</AppProvider>
       </body>
     </html>
   );
