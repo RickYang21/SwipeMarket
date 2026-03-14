@@ -119,7 +119,22 @@ export default function AIRecommendation({
       )}
 
       {/* Reasoning */}
-      <p className="text-xs text-[#D1D5DB] leading-relaxed">{analysis.reasoning}</p>
+      <div className="text-xs text-[#D1D5DB] leading-relaxed space-y-1.5">
+        {analysis.reasoning.split('\n').map((line, i) => {
+          // Parse bold text **like this**
+          const parts = line.split(/(\*\*.*?\*\*)/g);
+          return (
+            <p key={i}>
+              {parts.map((part, j) => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                  return <span key={j} className="text-white font-bold">{part.slice(2, -2)}</span>;
+                }
+                return <span key={j}>{part}</span>;
+              })}
+            </p>
+          );
+        })}
+      </div>
 
       {/* Edge */}
       <p className="text-[11px] text-amber-400/80 italic">Edge: {analysis.edge}</p>

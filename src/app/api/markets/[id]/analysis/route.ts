@@ -45,9 +45,18 @@ Your job:
 3. Compare your estimate to the market price to find the edge
 4. Give a clear, opinionated verdict
 
+CRITICAL FORMATTING RULES for "reasoning":
+- Use bullet points starting with "• " (bullet character + space)
+- Each bullet should be ONE short, punchy fact or insight
+- Wrap THE most important keyword or fact in each bullet with **double asterisks** for emphasis
+- Use 2-4 bullets, keep each bullet to ~15 words max
+- Never write a wall of text. Users are swiping fast.
+
+Example reasoning format:
+"• **Injured starting QB** ruled out per ESPN, massive impact on spread\n• Team is **2-7 on the road** this season, worst in the conference\n• Market at 65% feels high — our model says **~48%** is fair value"
+
 Rules:
 - Be specific — cite actual facts from the articles (e.g., "per ESPN, the starting QB is out with a knee injury")
-- Your reasoning should be 2-4 punchy sentences packed with real information
 - Never be generic. Users came here for YOUR research edge, not "market sentiment" platitudes
 - If the news contradicts the market price, call it out aggressively
 - If you find no useful news, say so honestly and analyze based on what you know
@@ -57,7 +66,7 @@ Respond in EXACTLY this JSON format, nothing else:
   "verdict": "STRONG BUY" | "BUY" | "LEAN BUY" | "SKIP",
   "confidence": <number 0-100>,
   "ai_probability": <number 0-100, YOUR independent YES probability>,
-  "reasoning": "<2-4 sentences citing specific facts from the research>",
+  "reasoning": "<2-4 bullet points with • prefix and **bold** key facts, separated by \\n>",
   "bull_case": "<1 sentence>",
   "bear_case": "<1 sentence>", 
   "edge": "<1 sentence comparing your probability to the market's>",
@@ -203,10 +212,10 @@ function generateMockAnalysis(market: Market): MarketAnalysis {
   ai_probability = Math.max(1, Math.min(99, ai_probability));
 
   const reasonings = {
-    "STRONG BUY": `This market is tightly contested at ${Math.round(yesPrice * 100)}% YES with strong volume — exactly the kind of pricing inefficiency we look for. The high liquidity means you can enter and exit cleanly. Smart money hasn't fully moved yet.`,
-    "BUY": `At ${Math.round(yesPrice * 100)}% implied probability, this market offers solid value. Trading volume of $${(volume / 1_000_000).toFixed(1)}M shows real interest. The current price doesn't fully reflect the underlying momentum.`,
-    "LEAN BUY": `Interesting opportunity at these odds. The ${Math.round(yesPrice * 100)}% price feels slightly off given the fundamentals. Worth a position but manage your risk — this could go either way.`,
-    "SKIP": `At ${Math.round(yesPrice * 100)}% YES, the market has already priced in most of the upside. The risk/reward doesn't justify entry at this level. Wait for better odds or look elsewhere.`,
+    "STRONG BUY": `• Tight contest at **${Math.round(yesPrice * 100)}% YES** with strong liquid volume\n• This is exactly the kind of **pricing inefficiency** we look for\n• Smart money hasn't fully moved in yet, leaving a **clean entry/exit** window`,
+    "BUY": `• Market offers **solid value** at ${Math.round(yesPrice * 100)}% implied probability\n• High trading volume of **$${(volume / 1_000_000).toFixed(1)}M** shows real interest\n• Current price doesn't fully reflect the **underlying momentum**`,
+    "LEAN BUY": `• The ${Math.round(yesPrice * 100)}% price feels **slightly off** given fundamentals\n• Offers an **interesting opportunity** but requires risk management\n• Market could easily swing, so size your position **conservatively**`,
+    "SKIP": `• At ${Math.round(yesPrice * 100)}% YES, the market has **already priced in** the upside\n• The risk/reward ratio **doesn't justify entry** at this high level\n• Better to **wait for better odds** or look for value elsewhere`,
   };
 
   const bullCases = [
