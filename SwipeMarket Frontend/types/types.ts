@@ -48,7 +48,7 @@ export interface SwipeRecord {
   id: string;
   market: Market;
   analysis: MarketAnalysis;
-  action: "buy" | "skip" | "watchlist";
+  action: "buy" | "buy_no" | "skip" | "watchlist";
   timestamp: number;
   yes_price_at_swipe: number;
   bet_amount: number;

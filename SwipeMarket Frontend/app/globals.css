@@ -8,7 +8,7 @@
   --accent-green: #10B981;
   --accent-red: #EF4444;
   --accent-gold: #F59E0B;
-  --accent-blue: #3B82F6;
+  --accent-blue: #F97316;
   --text-primary: #FAFAFA;
   --text-secondary: #9CA3AF;
   --titanium: #2A2A2E;
@@ -218,41 +218,53 @@ body {
 .stamp {
   position: absolute;
   top: 50%;
-  transform: translateY(-50%);
-  font-size: 40px;
-  font-weight: 800;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 36px;
+  font-weight: 900;
   letter-spacing: 4px;
   padding: 8px 20px;
-  border-width: 4px;
+  border-width: 5px;
   border-style: solid;
   border-radius: 12px;
   pointer-events: none;
   z-index: 50;
+  white-space: nowrap;
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.stamp-buy {
-  right: 24px;
-  color: var(--accent-green);
-  border-color: var(--accent-green);
-  transform: translateY(-50%) rotate(-20deg);
+.stamp-yes {
+  left: 30%;
+  color: #10B981;
+  border-color: #10B981;
+  transform: translate(-50%, -50%) rotate(-12deg);
   text-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
 }
 
-.stamp-skip {
-  left: 24px;
-  color: var(--accent-red);
-  border-color: var(--accent-red);
-  transform: translateY(-50%) rotate(20deg);
+.stamp-no {
+  left: 70%;
+  color: #EF4444;
+  border-color: #EF4444;
+  transform: translate(-50%, -50%) rotate(12deg);
   text-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
 }
 
-.stamp-watchlist {
-  left: 50%;
-  color: var(--accent-blue);
-  border-color: var(--accent-blue);
-  transform: translate(-50%, -50%);
-  font-size: 28px;
-  text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+.stamp-skip {
+  top: 35%;
+  color: #9CA3AF;
+  border-color: #9CA3AF;
+  transform: translate(-50%, -50%) rotate(-8deg);
+  text-shadow: 0 0 20px rgba(156, 163, 175, 0.5);
+}
+
+.stamp-watch {
+  top: 65%;
+  color: #F97316;
+  border-color: #F97316;
+  transform: translate(-50%, -50%) rotate(8deg);
+  text-shadow: 0 0 20px rgba(249, 115, 22, 0.5);
 }
 
 /* ================================================
@@ -351,6 +363,20 @@ body {
   border-radius: 16px;
 }
 
+.glow-gray {
+  box-shadow: 0 0 40px rgba(156, 163, 175, 0.2),
+    0 0 80px rgba(156, 163, 175, 0.06),
+    inset 0 0 30px rgba(156, 163, 175, 0.03);
+  border-radius: 16px;
+}
+
+.glow-gold {
+  box-shadow: 0 0 40px rgba(249, 115, 22, 0.25),
+    0 0 80px rgba(249, 115, 22, 0.08),
+    inset 0 0 30px rgba(249, 115, 22, 0.03);
+  border-radius: 16px;
+}
+
 /* ================================================
    VERDICT BADGES (with gradient treatments)
    ================================================ */
@@ -371,6 +397,25 @@ body {
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
   color: var(--accent-gold);
   border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.verdict-lean-yes {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%);
+  color: #10B981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.verdict-lean-no {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%);
+  color: #EF4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.verdict-strong-no {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.08) 100%);
+  color: #EF4444;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.15);
 }
 
 .verdict-skip {
@@ -494,7 +539,7 @@ body {
 }
 
 .stripe-watchlist {
-  background: linear-gradient(180deg, #3B82F6 0%, #2563EB 100%);
+  background: linear-gradient(180deg, #F97316 0%, #EA580C 100%);
 }
 
 /* ================================================

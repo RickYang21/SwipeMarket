@@ -313,7 +313,7 @@ export default function WalletScreen() {
                         ${state.balance.toFixed(2)}
                     </p>
                     <p className="text-[11px] text-secondary/50 tracking-wide">
-                        {state.swipeHistory.filter((s) => s.action === "buy" && !s.sold).length} active positions
+                        {state.swipeHistory.filter((s) => (s.action === "buy" || s.action === "buy_no") && !s.sold).length} active positions
                     </p>
                 </motion.div>
             </div>

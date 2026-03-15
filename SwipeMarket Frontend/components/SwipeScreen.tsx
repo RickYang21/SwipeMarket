@@ -209,7 +209,7 @@ export default function SwipeScreen() {
     }, [currentIndex, markets.length, loading, state.selectedCategories]);
 
     const handleSwipe = useCallback(
-        (direction: "buy" | "skip" | "watchlist") => {
+        (direction: "buy" | "buy_no" | "skip" | "watchlist") => {
             if (currentIndex >= markets.length) return;
 
             const currentMarket = markets[currentIndex];
@@ -227,14 +227,16 @@ export default function SwipeScreen() {
                 risk_level: "medium",
             };
 
+            const isBuy = direction === "buy" || direction === "buy_no";
+
             // Block buy with no balance — card snaps back, nothing recorded
-            if (direction === "buy" && state.balance <= 0) {
+            if (isBuy && state.balance <= 0) {
                 setToast({ message: "An error occurred", type: "error" });
                 return;
             }
 
             // For buys, clamp to available balance (handles balance < betAmount gracefully)
-            const actualBet = direction === "buy"
+            const actualBet = isBuy
                 ? Math.min(state.betAmount, state.balance)
                 : state.betAmount;
 
@@ -251,7 +253,8 @@ export default function SwipeScreen() {
                 },
             });
 
-            if (direction === "buy") {
+            if (isBuy) {
+                const side = direction === "buy" ? "YES" : "NO";
                 dispatch({ type: "DEDUCT_BALANCE", amount: actualBet });
                 dispatch({
                     type: "ADD_TRANSACTION",
@@ -259,16 +262,16 @@ export default function SwipeScreen() {
                         id: `t${Date.now()}`,
                         type: "bet",
                         amount: actualBet,
-                        description: `Bet on: ${currentMarket.question.substring(0, 40)}...`,
+                        description: `Bet ${side} on: ${currentMarket.question.substring(0, 40)}...`,
                         timestamp: Date.now(),
                     },
                 });
-                setToast({ message: `Bought -$${actualBet}`, type: "buy" });
+                setToast({ message: `Bought ${side} -$${actualBet}`, type: "buy" });
 
                 // Fire a real Liquid order for crypto cards (fire-and-forget)
                 if (isCryptoMarket(currentMarket)) {
                     const symbol = (currentMarket as CryptoMarket).currency_pair_code;
-                    placeLiquidOrder(symbol, "buy", actualBet).catch(() => {/* order failed silently */});
+                    placeLiquidOrder(symbol, direction === "buy" ? "buy" : "sell", actualBet).catch(() => {/* order failed silently */});
                 }
             } else if (direction === "skip") {
                 setToast({ message: "Skipped", type: "skip" });

@@ -12,9 +12,55 @@ import PolymarketChart from "./PolymarketChart";
 
 interface SwipeCardProps {
     data: MarketWithAnalysis;
-    onSwipe: (direction: "buy" | "skip" | "watchlist") => void;
+    onSwipe: (direction: "buy" | "buy_no" | "skip" | "watchlist") => void;
     isTop: boolean;
     index?: number;
+}
+
+// ─── Smart Stamp formatter ──────────────────────────────────────────────────
+
+/** Clean a raw name chunk: strip before-colon prefixes, parenthesised text, trim, then shorten. */
+function cleanAndShorten(raw: string): string {
+    // Remove anything before a colon (e.g. "Fight Night: Brad Tavares" -> "Brad Tavares")
+    let s = raw.includes(":") ? raw.slice(raw.indexOf(":") + 1) : raw;
+    // Remove parenthesised content
+    s = s.replace(/\s*\([^)]*\)/g, "").trim();
+    if (!s) return raw.trim().toUpperCase();
+    // 12 chars or less — keep whole thing
+    if (s.length <= 12) return s.toUpperCase();
+    // Longer — take last word only
+    const words = s.split(/\s+/);
+    return words[words.length - 1].toUpperCase();
+}
+
+/**
+ * Context-aware stamp text extraction.
+ * Checks market.question for "vs" matchups so that even when outcomes = ["Yes","No"],
+ * the stamps show the actual team/fighter names.
+ */
+function getSmartStampText(outcome: string, index: number, question: string): string {
+    if (!outcome) return "";
+
+    // Step 1: Is this a "vs" matchup in the question?
+    const vsMatch = question.match(/\s+vs\.?\s+/i);
+
+    if (vsMatch) {
+        // Step 2: Split question by "vs" / "vs."
+        const splitIdx = question.search(/\s+vs\.?\s+/i);
+        const left = question.slice(0, splitIdx);
+        const right = question.slice(splitIdx + vsMatch[0].length);
+        // Also strip trailing "?" from the right half
+        const chunk = index === 0 ? left : right.replace(/\?+$/, "");
+        // Step 3 & 4: Clean and shorten the extracted name
+        return cleanAndShorten(chunk);
+    }
+
+    // Step 5: No "vs" — check if the outcome itself is just "Yes"/"No"
+    const lower = outcome.trim().toLowerCase();
+    if (lower === "yes" || lower === "no") return outcome.trim().toUpperCase();
+
+    // Outcome contains an actual name (not Yes/No) — clean it directly
+    return cleanAndShorten(outcome);
 }
 
 // ─── Formatting helpers ─────────────────────────────────────────────────────
@@ -303,11 +349,36 @@ function CryptoGraph({
 // ─── Misc sub-components ─────────────────────────────────────────────────────
 
 function getVerdictClass(verdict: string): string {
-    switch (verdict) {
-        case "STRONG BUY": return "verdict-strong-buy";
-        case "LEAN BUY": return "verdict-lean-buy";
-        default: return "verdict-skip";
-    }
+    if (verdict.startsWith("STRONG")) return "verdict-strong-buy";
+    if (verdict.startsWith("LEAN")) return "verdict-lean-buy";
+    return "verdict-skip";
+}
+
+/** For Polymarket cards, replace "LEAN BUY" / "STRONG BUY" with the actual favored side name. */
+function getSmartVerdict(verdict: string, confidence: number, market: { outcomes?: string[]; question: string }, isCrypto: boolean): { text: string; favoredIndex: number | null } {
+    if (isCrypto) return { text: verdict, favoredIndex: null };
+    const upper = verdict.toUpperCase();
+    if (upper === "NEUTRAL" || upper === "SKIP") return { text: verdict, favoredIndex: null };
+    // Determine which side the AI favors based on confidence
+    const favoredIndex = confidence >= 50 ? 0 : 1;
+    const favoredLabel = getSmartStampText(
+        market.outcomes?.[favoredIndex] ?? (favoredIndex === 0 ? "Yes" : "No"),
+        favoredIndex,
+        market.question
+    );
+    const text = upper.includes("STRONG") ? `STRONG ${favoredLabel}` : `LEAN ${favoredLabel}`;
+    return { text, favoredIndex };
+}
+
+/** Picks verdict badge CSS class based on favored side (Polymarket) or generic verdict (crypto). */
+function getDynamicVerdictClass(verdict: string, favoredIndex: number | null, isCrypto: boolean): string {
+    // Crypto cards and neutral/skip use the original static classes
+    if (isCrypto || favoredIndex === null) return getVerdictClass(verdict);
+    const upper = verdict.toUpperCase();
+    const isStrong = upper.includes("STRONG");
+    // Option 1 (left side, green) vs Option 2 (right side, red)
+    if (favoredIndex === 0) return isStrong ? "verdict-strong-buy" : "verdict-lean-yes";
+    return isStrong ? "verdict-strong-no" : "verdict-lean-no";
 }
 
 function getRiskColor(risk: string): string {
@@ -393,28 +464,48 @@ export default function SwipeCard({ data, onSwipe, isTop, index = 0 }: SwipeCard
     const y = useMotionValue(0);
 
     const rotate = useTransform(x, [-200, 200], [-12, 12]);
-    const buyOpacity = useTransform(x, [0, 100], [0, 1]);
-    const skipOpacity = useTransform(x, [-100, 0], [1, 0]);
-    const watchlistOpacity = useTransform(y, [-100, 0], [1, 0]);
+    // Left swipe (x negative) = Option 1 (green, left side of card)
+    const option1Opacity = useTransform(x, [-100, 0], [1, 0]);
+    // Right swipe (x positive) = Option 2 (red, right side of card)
+    const option2Opacity = useTransform(x, [0, 100], [0, 1]);
+    // Up swipe (y negative) = Skip
+    const skipOpacity = useTransform(y, [-100, 0], [1, 0]);
+    // Down swipe (y positive) = Watchlist
+    const watchlistOpacity = useTransform(y, [0, 100], [0, 1]);
 
     const [currentGlow, setCurrentGlow] = useState("");
-    x.on("change", (val) => {
-        if (val > 50) setCurrentGlow("glow-green");
-        else if (val < -50) setCurrentGlow("glow-red");
-        else setCurrentGlow("");
-    });
-    y.on("change", (val) => {
-        if (val < -50 && Math.abs(x.get()) < 50) setCurrentGlow("glow-blue");
-    });
+    useEffect(() => {
+        const unsubX = x.on("change", (xVal) => {
+            const yVal = y.get();
+            if (xVal < -50) setCurrentGlow("glow-green");
+            else if (xVal > 50) setCurrentGlow("glow-red");
+            else if (yVal < -50) setCurrentGlow("glow-gray");
+            else if (yVal > 50) setCurrentGlow("glow-gold");
+            else setCurrentGlow("");
+        });
+        const unsubY = y.on("change", (yVal) => {
+            const xVal = x.get();
+            if (Math.abs(xVal) > 50) return;
+            if (yVal < -50) setCurrentGlow("glow-gray");
+            else if (yVal > 50) setCurrentGlow("glow-gold");
+            else setCurrentGlow("");
+        });
+        return () => { unsubX(); unsubY(); };
+    }, [x, y]);
 
     const handleDragEnd = (
         _: MouseEvent | TouchEvent | PointerEvent,
         info: { offset: { x: number; y: number }; velocity: { x: number; y: number } }
     ) => {
         const t = 100, vt = 500;
-        if (info.offset.y < -t || info.velocity.y < -vt) { setExiting(true); onSwipe("watchlist"); return; }
-        if (info.offset.x > t || info.velocity.x > vt) { setExiting(true); onSwipe("buy"); return; }
-        if (info.offset.x < -t || info.velocity.x < -vt) { setExiting(true); onSwipe("skip"); return; }
+        // Left = Buy Option 1 (left side of card)
+        if (info.offset.x < -t || info.velocity.x < -vt) { setExiting(true); onSwipe("buy"); return; }
+        // Right = Buy Option 2 (right side of card)
+        if (info.offset.x > t || info.velocity.x > vt) { setExiting(true); onSwipe("buy_no"); return; }
+        // Up = Skip
+        if (info.offset.y < -t || info.velocity.y < -vt) { setExiting(true); onSwipe("skip"); return; }
+        // Down = Watchlist
+        if (info.offset.y > t || info.velocity.y > vt) { setExiting(true); onSwipe("watchlist"); return; }
     };
 
     const isCrypto = isCryptoMarket(market);
@@ -451,7 +542,7 @@ export default function SwipeCard({ data, onSwipe, isTop, index = 0 }: SwipeCard
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             exit={{
                 x: x.get() > 50 ? 400 : x.get() < -50 ? -400 : 0,
-                y: y.get() < -50 ? -600 : 0,
+                y: y.get() < -50 ? -600 : y.get() > 50 ? 600 : 0,
                 opacity: 0,
                 transition: { duration: 0.3 },
             }}
@@ -463,10 +554,15 @@ export default function SwipeCard({ data, onSwipe, isTop, index = 0 }: SwipeCard
                     style={{ background: "linear-gradient(90deg, transparent 10%, rgba(255,255,255,0.08) 50%, transparent 90%)" }}
                 />
 
-                {/* Swipe stamps */}
-                <motion.div className="stamp stamp-buy" style={{ opacity: buyOpacity }}>BUY</motion.div>
+                {/* Swipe stamps — Option 1 (green/left) appears on left swipe, Option 2 (red/right) on right swipe */}
+                <motion.div className="stamp stamp-yes" style={{ opacity: option1Opacity }}>
+                    {isCrypto ? "BUY" : getSmartStampText(market.outcomes?.[0] ?? "Yes", 0, market.question)}
+                </motion.div>
+                <motion.div className="stamp stamp-no" style={{ opacity: option2Opacity }}>
+                    {isCrypto ? "SHORT" : getSmartStampText(market.outcomes?.[1] ?? "No", 1, market.question)}
+                </motion.div>
                 <motion.div className="stamp stamp-skip" style={{ opacity: skipOpacity }}>SKIP</motion.div>
-                <motion.div className="stamp stamp-watchlist" style={{ opacity: watchlistOpacity }}>WATCHLIST</motion.div>
+                <motion.div className="stamp stamp-watch" style={{ opacity: watchlistOpacity }}>WATCH</motion.div>
 
                 <div className="phone-content overflow-y-auto flex-1 flex flex-col relative w-full h-full">
                     {/* Hero image */}
@@ -540,10 +636,10 @@ export default function SwipeCard({ data, onSwipe, isTop, index = 0 }: SwipeCard
                             <div className="mb-4">
                                 <div className="flex justify-between text-[11px] mb-1.5">
                                     <span className="text-accent-green font-semibold tracking-wide">
-                                        YES {Math.max(1, Math.round(market.yes_price * 100))}%
+                                        {getSmartStampText(market.outcomes?.[0] ?? "Yes", 0, market.question)} {Math.max(1, Math.round(market.yes_price * 100))}%
                                     </span>
                                     <span className="text-accent-red/80 font-semibold tracking-wide">
-                                        NO {Math.max(1, Math.round(market.no_price * 100))}%
+                                        {getSmartStampText(market.outcomes?.[1] ?? "No", 1, market.question)} {Math.max(1, Math.round(market.no_price * 100))}%
                                     </span>
                                 </div>
                                 <div className="px-1">
@@ -571,15 +667,17 @@ export default function SwipeCard({ data, onSwipe, isTop, index = 0 }: SwipeCard
                         </div>
 
                         {/* AI Analysis Box */}
-                        {analysis ? (
+                        {analysis ? (() => {
+                            const smartVerdict = getSmartVerdict(analysis.verdict, analysis.confidence, market, isCrypto);
+                            return (
                             <div className="ai-analysis-box rounded-2xl p-3 shrink-0">
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2">
                                         <div className="w-1.5 h-1.5 rounded-full bg-accent-gold pulse-slow" />
                                         <span className="text-accent-gold text-[10px] font-bold tracking-[0.15em] uppercase">AI Analysis</span>
                                     </div>
-                                    <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold ${getVerdictClass(analysis.verdict)}`}>
-                                        {analysis.verdict}
+                                    <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold ${getDynamicVerdictClass(analysis.verdict, smartVerdict.favoredIndex, isCrypto)} truncate max-w-[55%]`}>
+                                        {smartVerdict.text}
                                     </span>
                                 </div>
 
@@ -612,7 +710,8 @@ export default function SwipeCard({ data, onSwipe, isTop, index = 0 }: SwipeCard
                                     {getRiskDots(analysis.risk_level)}
                                 </div>
                             </div>
-                        ) : (
+                            );
+                        })() : (
                             /* Loading skeleton */
                             <div className="ai-analysis-box rounded-2xl p-3 shrink-0 overflow-hidden relative mt-2">
                                 <div className="absolute inset-0 z-0">

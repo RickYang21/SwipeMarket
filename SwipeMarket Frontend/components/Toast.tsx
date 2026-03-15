@@ -34,10 +34,10 @@ export default function Toast({ message, type, onDone }: ToastProps) {
             shadow: "0 4px 16px rgba(239, 68, 68, 0.15)",
         },
         watchlist: {
-            bg: "linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.08) 100%)",
-            border: "rgba(59, 130, 246, 0.2)",
+            bg: "linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0.08) 100%)",
+            border: "rgba(249, 115, 22, 0.2)",
             text: "text-accent-blue",
-            shadow: "0 4px 16px rgba(59, 130, 246, 0.15)",
+            shadow: "0 4px 16px rgba(249, 115, 22, 0.15)",
         },
         error: {
             bg: "linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.1) 100%)",

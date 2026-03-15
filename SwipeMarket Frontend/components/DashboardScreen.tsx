@@ -12,7 +12,7 @@ export default function DashboardScreen() {
     const [livePrices, setLivePrices] = useState<Record<string, number>>({});
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    const buys = state.swipeHistory.filter((s) => s.action === "buy");
+    const buys = state.swipeHistory.filter((s) => s.action === "buy" || s.action === "buy_no");
     const skips = state.swipeHistory.filter((s) => s.action === "skip");
     const watchlist = state.swipeHistory.filter((s) => s.action === "watchlist");
 
@@ -83,7 +83,7 @@ export default function DashboardScreen() {
     ];
 
     const getActionBadge = (action: string, sold?: boolean) => {
-        if (action === "buy" && sold) {
+        if ((action === "buy" || action === "buy_no") && sold) {
             return {
                 label: "Sold",
                 class: "bg-secondary/10 text-secondary/50 border border-secondary/20",
@@ -92,13 +92,18 @@ export default function DashboardScreen() {
         switch (action) {
             case "buy":
                 return {
-                    label: "Bought",
+                    label: "Bought YES",
                     class: "bg-accent-green/10 text-accent-green border border-accent-green/20",
+                };
+            case "buy_no":
+                return {
+                    label: "Bought NO",
+                    class: "bg-accent-red/10 text-accent-red border border-accent-red/20",
                 };
             case "skip":
                 return {
                     label: "Skipped",
-                    class: "bg-accent-red/10 text-accent-red border border-accent-red/20",
+                    class: "bg-secondary/10 text-secondary/50 border border-secondary/20",
                 };
             case "watchlist":
                 return {
@@ -111,9 +116,11 @@ export default function DashboardScreen() {
     };
 
     const getStripeClass = (action: string, sold?: boolean) => {
-        if (action === "buy" && sold) return "bg-secondary/30";
+        if ((action === "buy" || action === "buy_no") && sold) return "bg-secondary/30";
         switch (action) {
             case "buy":
+                return "stripe-buy";
+            case "buy_no":
                 return "stripe-buy";
             case "skip":
                 return "stripe-skip";
@@ -263,7 +270,8 @@ export default function DashboardScreen() {
                         {filteredHistory.map((record, idx) => {
                             const badge = getActionBadge(record.action, record.sold);
                             const currentPrice = getLivePrice(record);
-                            const pnlPct = record.action === "buy"
+                            const isBuyAction = record.action === "buy" || record.action === "buy_no";
+                            const pnlPct = isBuyAction
                                 ? ((currentPrice - record.yes_price_at_swipe) / record.yes_price_at_swipe) * 100
                                 : 0;
 
@@ -299,7 +307,7 @@ export default function DashboardScreen() {
                                                 <span className="tabular-nums">
                                                     {record.sold ? "Exit" : "Now"}: {Math.max(1, Math.round(currentPrice * 100))}%
                                                 </span>
-                                                {record.action === "buy" && (
+                                                {isBuyAction && (
                                                     <span
                                                         className={`font-semibold tabular-nums ${pnlPct >= 0 ? "text-accent-green" : "text-accent-red"}`}
                                                     >
@@ -307,7 +315,7 @@ export default function DashboardScreen() {
                                                     </span>
                                                 )}
                                             </div>
-                                            {record.action === "buy" && !record.sold && (
+                                            {isBuyAction && !record.sold && (
                                                 <button
                                                     onClick={() => handleSell(record, currentPrice)}
                                                     className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-accent-red/10 text-accent-red border border-accent-red/20 active:scale-95 transition-transform"
