@@ -5,7 +5,7 @@
 ## How it works
 
 1. **Filter** — Pick your markets: NBA, UFC, Politics, and more
-2. **Swipe** — Swipe right to buy, left to skip, up to watchlist. Each card shows full market data + an AI recommendation.
+2. **Swipe** — Swipe right to buy, left to buy the other/short, down to watchlist, up to skip. Each card shows full market data + an AI recommendation.
 3. **Track** — Dashboard with full portfolio overview, P&L tracking, and swipe history
 
 ## Tech stack
@@ -15,12 +15,13 @@
 - **Framer Motion** (swipe gestures + animations)
 - **Polymarket CLOB API** (gamma-api.polymarket.com)
 - **Anthropic API** (Claude claude-sonnet-4-20250514 for AI analysis)
+- **Liquid SDK/API** (Crypto and live updates)
 
 ## Getting started
 
 ```bash
 npm install
-cp .env.example .env.local   # Add your ANTHROPIC_API_KEY (optional)
+cp .env.example .env.local   # Add your ANTHROPIC_API_KEY (optional) and LIQUID_API_KEY and LIQUID_API_SECRET
 npm run dev
 ```
 
